@@ -207,7 +207,7 @@ func (f *_FILE) isMustRename() bool {
 func (f *_FILE) rename() {
 	if dailyRolling {
 		fn := f.dir + "/" + f.filename + "." + f._date.Format(DATEFORMAT)
-		if !isExist(fn) {
+		if !isExist(fn) && f.isMustRename() {
 			if f.logfile != nil {
 				f.logfile.Close()
 			}
