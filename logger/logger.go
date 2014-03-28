@@ -147,8 +147,8 @@ func Info(v ...interface{}) {
 	logObj.mu.RLock()
 	defer logObj.mu.RUnlock()
 	if logLevel <= INFO {
-		logObj.lg.Output(2, fmt.Sprintln("info", v))
-		console("info", v)
+		logObj.lg.Output(2, fmt.Sprintln("INFO", v))
+		console("INFO", v)
 	}
 }
 func Warn(v ...interface{}) {
@@ -159,8 +159,8 @@ func Warn(v ...interface{}) {
 	logObj.mu.RLock()
 	defer logObj.mu.RUnlock()
 	if logLevel <= WARN {
-		logObj.lg.Output(2, fmt.Sprintln("warn", v))
-		console("warn", v)
+		logObj.lg.Output(2, fmt.Sprintln("WARN", v))
+		console("WARN", v)
 	}
 }
 func Error(v ...interface{}) {
@@ -171,8 +171,8 @@ func Error(v ...interface{}) {
 	logObj.mu.RLock()
 	defer logObj.mu.RUnlock()
 	if logLevel <= ERROR {
-		logObj.lg.Output(2, fmt.Sprintln("error", v))
-		console("error", v)
+		logObj.lg.Output(2, fmt.Sprintln("ERROR", v))
+		console("ERROR", v)
 	}
 }
 func Fatal(v ...interface{}) {
@@ -183,8 +183,8 @@ func Fatal(v ...interface{}) {
 	logObj.mu.RLock()
 	defer logObj.mu.RUnlock()
 	if logLevel <= FATAL {
-		logObj.lg.Output(2, fmt.Sprintln("fatal", v))
-		console("fatal", v)
+		logObj.lg.Output(2, fmt.Sprintln("FATAL", v))
+		console("FATAL", v)
 	}
 }
 
@@ -243,7 +243,6 @@ func (f *_FILE) coverNextOne() {
 }
 
 func fileSize(file string) int64 {
-	fmt.Println("fileSize", file)
 	f, e := os.Stat(file)
 	if e != nil {
 		fmt.Println(e.Error())
