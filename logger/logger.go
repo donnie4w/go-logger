@@ -81,7 +81,7 @@ func SetRollingFile(fileDir, fileName string, maxNumber int32, maxSize int64, _u
 		}
 	}
 	if !logObj.isMustRename() {
-		logObj.logfile, _ = os.OpenFile(fileDir+"/"+fileName, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0)
+		logObj.logfile, _ = os.OpenFile(fileDir+"/"+fileName, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0644)
 		logObj.lg = log.New(logObj.logfile, "\n", log.Ldate|log.Ltime|log.Lshortfile)
 	} else {
 		logObj.rename()
