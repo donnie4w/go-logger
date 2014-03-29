@@ -135,8 +135,8 @@ func Debug(v ...interface{}) {
 	defer logObj.mu.RUnlock()
 
 	if logLevel <= DEBUG {
-		logObj.lg.Output(2, fmt.Sprintln("debug", v))
-		console("debug", v)
+		logObj.lg.Output(2, fmt.Sprintln("DEBUG", v))
+		console("DEBUG", v)
 	}
 }
 func Info(v ...interface{}) {
