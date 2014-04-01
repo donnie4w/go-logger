@@ -81,8 +81,8 @@ func SetRollingFile(fileDir, fileName string, maxNumber int32, maxSize int64, _u
 		}
 	}
 	if !logObj.isMustRename() {
-		logObj.logfile, _ = os.OpenFile(fileDir+"/"+fileName, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0)
-		logObj.lg = log.New(logObj.logfile, "\n", log.Ldate|log.Ltime|log.Lshortfile)
+		logObj.logfile, _ = os.OpenFile(fileDir+"/"+fileName, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0644)
+		logObj.lg = log.New(logObj.logfile, "", log.Ldate|log.Ltime|log.Lshortfile)
 	} else {
 		logObj.rename()
 	}
@@ -99,7 +99,7 @@ func SetRollingDaily(fileDir, fileName string) {
 
 	if !logObj.isMustRename() {
 		logObj.logfile, _ = os.OpenFile(fileDir+"/"+fileName, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0)
-		logObj.lg = log.New(logObj.logfile, "\n", log.Ldate|log.Ltime|log.Lshortfile)
+		logObj.lg = log.New(logObj.logfile, "", log.Ldate|log.Ltime|log.Lshortfile)
 	} else {
 		logObj.rename()
 	}
@@ -147,8 +147,8 @@ func Info(v ...interface{}) {
 	logObj.mu.RLock()
 	defer logObj.mu.RUnlock()
 	if logLevel <= INFO {
-		logObj.lg.Output(2, fmt.Sprintln("info", v))
-		console("info", v)
+		logObj.lg.Output(2, fmt.Sprintln("INFO", v))
+		console("INFO", v)
 	}
 }
 func Warn(v ...interface{}) {
@@ -159,8 +159,8 @@ func Warn(v ...interface{}) {
 	logObj.mu.RLock()
 	defer logObj.mu.RUnlock()
 	if logLevel <= WARN {
-		logObj.lg.Output(2, fmt.Sprintln("warn", v))
-		console("warn", v)
+		logObj.lg.Output(2, fmt.Sprintln("WARN", v))
+		console("WARN", v)
 	}
 }
 func Error(v ...interface{}) {
@@ -171,8 +171,8 @@ func Error(v ...interface{}) {
 	logObj.mu.RLock()
 	defer logObj.mu.RUnlock()
 	if logLevel <= ERROR {
-		logObj.lg.Output(2, fmt.Sprintln("error", v))
-		console("error", v)
+		logObj.lg.Output(2, fmt.Sprintln("ERROR", v))
+		console("ERROR", v)
 	}
 }
 func Fatal(v ...interface{}) {
@@ -183,8 +183,8 @@ func Fatal(v ...interface{}) {
 	logObj.mu.RLock()
 	defer logObj.mu.RUnlock()
 	if logLevel <= FATAL {
-		logObj.lg.Output(2, fmt.Sprintln("fatal", v))
-		console("fatal", v)
+		logObj.lg.Output(2, fmt.Sprintln("FATAL", v))
+		console("FATAL", v)
 	}
 }
 
@@ -218,7 +218,7 @@ func (f *_FILE) rename() {
 			t, _ := time.Parse(DATEFORMAT, time.Now().Format(DATEFORMAT))
 			f._date = &t
 			f.logfile, _ = os.Create(f.dir + "/" + f.filename)
-			f.lg = log.New(logObj.logfile, "\n", log.Ldate|log.Ltime|log.Lshortfile)
+			f.lg = log.New(logObj.logfile, "", log.Ldate|log.Ltime|log.Lshortfile)
 		}
 	} else {
 		f.coverNextOne()
@@ -239,11 +239,10 @@ func (f *_FILE) coverNextOne() {
 	}
 	os.Rename(f.dir+"/"+f.filename, f.dir+"/"+f.filename+"."+strconv.Itoa(int(f._suffix)))
 	f.logfile, _ = os.Create(f.dir + "/" + f.filename)
-	f.lg = log.New(logObj.logfile, "\n", log.Ldate|log.Ltime|log.Lshortfile)
+	f.lg = log.New(logObj.logfile, "", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func fileSize(file string) int64 {
-	fmt.Println("fileSize", file)
 	f, e := os.Stat(file)
 	if e != nil {
 		fmt.Println(e.Error())
