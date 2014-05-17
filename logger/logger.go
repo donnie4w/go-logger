@@ -65,7 +65,7 @@ func SetLevel(_level LEVEL) {
 	logLevel = _level
 }
 
-func SetRollingFile(fileDir, fileName string, maxNumber int32, maxSize int64, _unit UNIT) {
+func SetRollingFile(fileDir, fileName string, maxNumber int32, maxSize int64, _unit UNIT, perm os.FileMode) {
 	maxFileCount = maxNumber
 	maxFileSize = maxSize * int64(_unit)
 	RollingFile = true
@@ -81,15 +81,15 @@ func SetRollingFile(fileDir, fileName string, maxNumber int32, maxSize int64, _u
 		}
 	}
 	if !logObj.isMustRename() {
-		logObj.logfile, _ = os.OpenFile(fileDir+"/"+fileName, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0)
-		logObj.lg = log.New(logObj.logfile, "\n", log.Ldate|log.Ltime|log.Lshortfile)
+		logObj.logfile, _ = os.OpenFile(fileDir+"/"+fileName, os.O_RDWR|os.O_APPEND|os.O_CREATE, perm)
+		logObj.lg = log.New(logObj.logfile, "", log.Ldate|log.Ltime|log.Lshortfile)
 	} else {
 		logObj.rename()
 	}
 	go fileMonitor()
 }
 
-func SetRollingDaily(fileDir, fileName string) {
+func SetRollingDaily(fileDir, fileName string, perm os.FileMode) {
 	RollingFile = false
 	dailyRolling = true
 	t, _ := time.Parse(DATEFORMAT, time.Now().Format(DATEFORMAT))
@@ -98,8 +98,8 @@ func SetRollingDaily(fileDir, fileName string) {
 	defer logObj.mu.Unlock()
 
 	if !logObj.isMustRename() {
-		logObj.logfile, _ = os.OpenFile(fileDir+"/"+fileName, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0)
-		logObj.lg = log.New(logObj.logfile, "\n", log.Ldate|log.Ltime|log.Lshortfile)
+		logObj.logfile, _ = os.OpenFile(fileDir+"/"+fileName, os.O_RDWR|os.O_APPEND|os.O_CREATE, perm)
+		logObj.lg = log.New(logObj.logfile, "", log.Ldate|log.Ltime|log.Lshortfile)
 	} else {
 		logObj.rename()
 	}
