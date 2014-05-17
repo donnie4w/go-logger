@@ -127,9 +127,8 @@ func catchError() {
 }
 
 func Debug(v ...interface{}) {
-	if dailyRolling {
-		fileCheck()
-	}
+	fileCheck()
+
 	defer catchError()
 	logObj.mu.RLock()
 	defer logObj.mu.RUnlock()
@@ -140,9 +139,8 @@ func Debug(v ...interface{}) {
 	}
 }
 func Info(v ...interface{}) {
-	if dailyRolling {
-		fileCheck()
-	}
+	fileCheck()
+
 	defer catchError()
 	logObj.mu.RLock()
 	defer logObj.mu.RUnlock()
@@ -152,9 +150,8 @@ func Info(v ...interface{}) {
 	}
 }
 func Warn(v ...interface{}) {
-	if dailyRolling {
-		fileCheck()
-	}
+	fileCheck()
+
 	defer catchError()
 	logObj.mu.RLock()
 	defer logObj.mu.RUnlock()
@@ -164,9 +161,8 @@ func Warn(v ...interface{}) {
 	}
 }
 func Error(v ...interface{}) {
-	if dailyRolling {
-		fileCheck()
-	}
+	fileCheck()
+
 	defer catchError()
 	logObj.mu.RLock()
 	defer logObj.mu.RUnlock()
@@ -176,9 +172,8 @@ func Error(v ...interface{}) {
 	}
 }
 func Fatal(v ...interface{}) {
-	if dailyRolling {
-		fileCheck()
-	}
+	fileCheck()
+
 	defer catchError()
 	logObj.mu.RLock()
 	defer logObj.mu.RUnlock()
