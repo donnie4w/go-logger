@@ -272,6 +272,8 @@ func fileCheck() {
 	if logObj != nil && logObj.isMustRename() {
 		logObj.mu.Lock()
 		defer logObj.mu.Unlock()
-		logObj.rename()
+		if logObj != nil && logObj.isMustRename() {
+			logObj.rename()
+		}
 	}
 }
