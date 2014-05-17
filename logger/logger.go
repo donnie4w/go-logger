@@ -243,10 +243,11 @@ func (f *_FILE) coverNextOne() {
 }
 
 func fileSize(file string) int64 {
-	fmt.Println("fileSize", file)
 	f, e := os.Stat(file)
 	if e != nil {
-		fmt.Println(e.Error())
+		if !os.IsNotExist(e) {
+			fmt.Println(e.Error())
+		}
 		return 0
 	}
 	return f.Size()
