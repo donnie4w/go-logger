@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	_VER string = "1.0.0"
+	_VER string = "1.0.2"
 )
 
 type LEVEL int32
@@ -116,7 +116,7 @@ func console(s ...interface{}) {
 			}
 		}
 		file = short
-		log.Println(file+":"+strconv.Itoa(line), s)
+		log.Println(file, strconv.Itoa(line), s)
 	}
 }
 
@@ -131,11 +131,15 @@ func Debug(v ...interface{}) {
 		fileCheck()
 	}
 	defer catchError()
-	logObj.mu.RLock()
-	defer logObj.mu.RUnlock()
+	if logObj != nil {
+		logObj.mu.RLock()
+		defer logObj.mu.RUnlock()
+	}
 
 	if logLevel <= DEBUG {
-		logObj.lg.Output(2, fmt.Sprintln("debug", v))
+		if logObj != nil {
+			logObj.lg.Output(2, fmt.Sprintln("debug", v))
+		}
 		console("debug", v)
 	}
 }
@@ -144,10 +148,14 @@ func Info(v ...interface{}) {
 		fileCheck()
 	}
 	defer catchError()
-	logObj.mu.RLock()
-	defer logObj.mu.RUnlock()
+	if logObj != nil {
+		logObj.mu.RLock()
+		defer logObj.mu.RUnlock()
+	}
 	if logLevel <= INFO {
-		logObj.lg.Output(2, fmt.Sprintln("info", v))
+		if logObj != nil {
+			logObj.lg.Output(2, fmt.Sprintln("info", v))
+		}
 		console("info", v)
 	}
 }
@@ -156,10 +164,15 @@ func Warn(v ...interface{}) {
 		fileCheck()
 	}
 	defer catchError()
-	logObj.mu.RLock()
-	defer logObj.mu.RUnlock()
+	if logObj != nil {
+		logObj.mu.RLock()
+		defer logObj.mu.RUnlock()
+	}
+
 	if logLevel <= WARN {
-		logObj.lg.Output(2, fmt.Sprintln("warn", v))
+		if logObj != nil {
+			logObj.lg.Output(2, fmt.Sprintln("warn", v))
+		}
 		console("warn", v)
 	}
 }
@@ -168,10 +181,14 @@ func Error(v ...interface{}) {
 		fileCheck()
 	}
 	defer catchError()
-	logObj.mu.RLock()
-	defer logObj.mu.RUnlock()
+	if logObj != nil {
+		logObj.mu.RLock()
+		defer logObj.mu.RUnlock()
+	}
 	if logLevel <= ERROR {
-		logObj.lg.Output(2, fmt.Sprintln("error", v))
+		if logObj != nil {
+			logObj.lg.Output(2, fmt.Sprintln("error", v))
+		}
 		console("error", v)
 	}
 }
@@ -180,10 +197,14 @@ func Fatal(v ...interface{}) {
 		fileCheck()
 	}
 	defer catchError()
-	logObj.mu.RLock()
-	defer logObj.mu.RUnlock()
+	if logObj != nil {
+		logObj.mu.RLock()
+		defer logObj.mu.RUnlock()
+	}
 	if logLevel <= FATAL {
-		logObj.lg.Output(2, fmt.Sprintln("fatal", v))
+		if logObj != nil {
+			logObj.lg.Output(2, fmt.Sprintln("fatal", v))
+		}
 		console("fatal", v)
 	}
 }
