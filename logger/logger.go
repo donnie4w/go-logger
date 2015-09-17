@@ -22,11 +22,22 @@ var maxFileCount int32
 var dailyRolling bool = true
 var consoleAppender bool = true
 var RollingFile bool = false
+var logFormat int = Ldate|Ltime|Lshortfile
 var logObj *_FILE
 
 const DATEFORMAT = "2006-01-02"
 
 type UNIT int64
+
+const (
+	Ldate         = log.Ldate                // the date in the local time zone: 2009/01/23
+	Ltime         = log.Ltime                // the time in the local time zone: 01:23:23
+	Lmicroseconds = log.Lmicroseconds        // microsecond resolution: 01:23:23.123123.  assumes Ltime.
+	Llongfile     = log.Llongfile            // full file name and line number: /a/b/c/d.go:23
+	Lshortfile    = log.Lshortfile           // final file name element and line number: d.go:23. overrides Llongfile
+	LUTC          = log.LUTC                 // if Ldate or Ltime is set, use UTC rather than the local time zone
+	LstdFlags     = log.LstdFlags            // initial values for the standard logge
+)
 
 const (
 	_       = iota
@@ -65,6 +76,14 @@ func SetLevel(_level LEVEL) {
 	logLevel = _level
 }
 
+func SetFormat(_logFormat int) {
+    logFormat = _logFormat
+
+    if logObj != nil && logObj.lg != nil {
+        logObj.lg.SetFlags(logFormat);
+    }
+}
+
 func SetRollingFile(fileDir, fileName string, maxNumber int32, maxSize int64, _unit UNIT) {
 	maxFileCount = maxNumber
 	maxFileSize = maxSize * int64(_unit)
@@ -82,7 +101,7 @@ func SetRollingFile(fileDir, fileName string, maxNumber int32, maxSize int64, _u
 	}
 	if !logObj.isMustRename() {
 		logObj.logfile, _ = os.OpenFile(fileDir+"/"+fileName, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)
-		logObj.lg = log.New(logObj.logfile, "", log.Ldate|log.Ltime|log.Lshortfile)
+		logObj.lg = log.New(logObj.logfile, "", logFormat)
 	} else {
 		logObj.rename()
 	}
@@ -99,7 +118,7 @@ func SetRollingDaily(fileDir, fileName string) {
 
 	if !logObj.isMustRename() {
 		logObj.logfile, _ = os.OpenFile(fileDir+"/"+fileName, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)
-		logObj.lg = log.New(logObj.logfile, "", log.Ldate|log.Ltime|log.Lshortfile)
+		logObj.lg = log.New(logObj.logfile, "", logFormat)
 	} else {
 		logObj.rename()
 	}
@@ -239,7 +258,7 @@ func (f *_FILE) rename() {
 			t, _ := time.Parse(DATEFORMAT, time.Now().Format(DATEFORMAT))
 			f._date = &t
 			f.logfile, _ = os.Create(f.dir + "/" + f.filename)
-			f.lg = log.New(logObj.logfile, "\n", log.Ldate|log.Ltime|log.Lshortfile)
+			f.lg = log.New(logObj.logfile, "\n", logFormat)
 		}
 	} else {
 		f.coverNextOne()
@@ -260,7 +279,7 @@ func (f *_FILE) coverNextOne() {
 	}
 	os.Rename(f.dir+"/"+f.filename, f.dir+"/"+f.filename+"."+strconv.Itoa(int(f._suffix)))
 	f.logfile, _ = os.Create(f.dir + "/" + f.filename)
-	f.lg = log.New(logObj.logfile, "\n", log.Ldate|log.Ltime|log.Lshortfile)
+	f.lg = log.New(logObj.logfile, "\n", logFormat)
 }
 
 func fileSize(file string) int64 {
