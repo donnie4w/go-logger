@@ -20,7 +20,7 @@ var logLevel LEVEL = 1
 var maxFileSize int64
 var maxFileCount int32
 var dailyRolling bool = true
-var consoleAppender bool = true
+var consoleAppender bool = false
 var RollingFile bool = false
 var logFormat int = Ldate|Ltime|Lshortfile
 var logObj *_FILE
@@ -35,7 +35,7 @@ const (
 	Lmicroseconds = log.Lmicroseconds        // microsecond resolution: 01:23:23.123123.  assumes Ltime.
 	Llongfile     = log.Llongfile            // full file name and line number: /a/b/c/d.go:23
 	Lshortfile    = log.Lshortfile           // final file name element and line number: d.go:23. overrides Llongfile
-	LUTC          = log.LUTC                 // if Ldate or Ltime is set, use UTC rather than the local time zone
+//	LUTC          = log.LUTC                 // if Ldate or Ltime is set, use UTC rather than the local time zone
 	LstdFlags     = log.LstdFlags            // initial values for the standard logge
 )
 
