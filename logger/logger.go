@@ -70,6 +70,7 @@ func SetRollingFile(fileDir, fileName string, maxNumber int32, maxSize int64, _u
 	maxFileSize = maxSize * int64(_unit)
 	RollingFile = true
 	dailyRolling = false
+	mkdirlog(fileDir)
 	logObj = &_FILE{dir: fileDir, filename: fileName, isCover: false, mu: new(sync.RWMutex)}
 	logObj.mu.Lock()
 	defer logObj.mu.Unlock()
@@ -93,6 +94,7 @@ func SetRollingDaily(fileDir, fileName string) {
 	RollingFile = false
 	dailyRolling = true
 	t, _ := time.Parse(DATEFORMAT, time.Now().Format(DATEFORMAT))
+	mkdirlog(fileDir)
 	logObj = &_FILE{dir: fileDir, filename: fileName, _date: &t, isCover: false, mu: new(sync.RWMutex)}
 	logObj.mu.Lock()
 	defer logObj.mu.Unlock()
@@ -103,6 +105,20 @@ func SetRollingDaily(fileDir, fileName string) {
 	} else {
 		logObj.rename()
 	}
+}
+
+func mkdirlog(dir string) (e error) {
+	_, er := os.Stat(dir)
+	b := er == nil || os.IsExist(er)
+	if !b {
+		if err := os.MkdirAll(dir, 0666); err != nil {
+			if os.IsPermission(err) {
+				fmt.Println("create dir error:", err.Error())
+				e = err
+			}
+		}
+	}
+	return
 }
 
 func console(s ...interface{}) {
