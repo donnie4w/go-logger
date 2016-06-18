@@ -21,6 +21,8 @@ func Test(t *testing.T) {
 
 	//指定是否控制台打印，默认为true
 	logger.SetConsole(true)
+    //设置日志格式 默认格式为Ldate|Ltime|Lshortfile 前缀为2015/09/17 22:55:44 main.go:13:
+    logger.SetFormat(logger.Ldate);
 	//指定日志文件备份方式为文件大小的方式
 	//第一个参数为日志文件存放目录
 	//第二个参数为日志文件命名
