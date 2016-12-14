@@ -6,6 +6,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -38,6 +39,7 @@ const (
 
 const (
 	ALL LEVEL = iota
+	TRACE
 	DEBUG
 	INFO
 	WARN
@@ -61,8 +63,37 @@ func SetConsole(isConsole bool) {
 	consoleAppender = isConsole
 }
 
-func SetLevel(_level LEVEL) {
-	logLevel = _level
+func SetLevel(lv string) error {
+	if lv == "" {
+		return fmt.Errorf("log level is blank")
+	}
+
+	l := strings.ToUpper(lv)
+
+	switch l[0] {
+	case 'T':
+		logLevel = TRACE
+	case 'D':
+		logLevel = DEBUG
+	case 'I':
+		logLevel = INFO
+	case 'W':
+		logLevel = WARN
+	case 'E':
+		logLevel = ERROR
+	case 'F':
+		logLevel = FATAL
+	case 'O':
+		logLevel = OFF
+	default:
+		logLevel = ALL
+	}
+
+	if logLevel == ALL {
+		return fmt.Errorf("log level setting error")
+	}
+	log.SetFlags(log.Ldate | log.Ltime)
+	return nil
 }
 
 func SetRollingFile(fileDir, fileName string, maxNumber int32, maxSize int64, _unit UNIT) {
@@ -83,7 +114,7 @@ func SetRollingFile(fileDir, fileName string, maxNumber int32, maxSize int64, _u
 	}
 	if !logObj.isMustRename() {
 		logObj.logfile, _ = os.OpenFile(fileDir+"/"+fileName, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)
-		logObj.lg = log.New(logObj.logfile, "", log.Ldate|log.Ltime|log.Lshortfile)
+		logObj.lg = log.New(logObj.logfile, "", log.Ldate|log.Ltime)
 	} else {
 		logObj.rename()
 	}
@@ -101,7 +132,7 @@ func SetRollingDaily(fileDir, fileName string) {
 
 	if !logObj.isMustRename() {
 		logObj.logfile, _ = os.OpenFile(fileDir+"/"+fileName, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)
-		logObj.lg = log.New(logObj.logfile, "", log.Ldate|log.Ltime|log.Lshortfile)
+		logObj.lg = log.New(logObj.logfile, "", log.Ldate|log.Ltime)
 	} else {
 		logObj.rename()
 	}
@@ -121,7 +152,7 @@ func mkdirlog(dir string) (e error) {
 	return
 }
 
-func console(s ...interface{}) {
+func console(level string, v ...interface{}) {
 	if consoleAppender {
 		_, file, line, _ := runtime.Caller(2)
 		short := file
@@ -132,7 +163,13 @@ func console(s ...interface{}) {
 			}
 		}
 		file = short
-		log.Println(file, strconv.Itoa(line), s)
+
+		var args []interface{}
+		args = append(args, fmt.Sprintf("[%s] %s:%d", level, file, line))
+		for i := 0; i < len(v); i++ {
+			args = append(args, v[i])
+		}
+		log.Println(args...)
 	}
 }
 
@@ -154,9 +191,9 @@ func Debug(v ...interface{}) {
 
 	if logLevel <= DEBUG {
 		if logObj != nil {
-			logObj.lg.Output(2, fmt.Sprintln("debug", v))
+			logObj.lg.Println(fmt.Sprintln("DEBUG", v))
 		}
-		console("debug", v)
+		console("DEBUG", v...)
 	}
 }
 func Info(v ...interface{}) {
@@ -170,9 +207,9 @@ func Info(v ...interface{}) {
 	}
 	if logLevel <= INFO {
 		if logObj != nil {
-			logObj.lg.Output(2, fmt.Sprintln("info", v))
+			logObj.lg.Println(fmt.Sprintln("INFO", v))
 		}
-		console("info", v)
+		console("INFO", v...)
 	}
 }
 func Warn(v ...interface{}) {
@@ -187,9 +224,9 @@ func Warn(v ...interface{}) {
 
 	if logLevel <= WARN {
 		if logObj != nil {
-			logObj.lg.Output(2, fmt.Sprintln("warn", v))
+			logObj.lg.Output(2, fmt.Sprintln("WARN", v))
 		}
-		console("warn", v)
+		console("WARN", v...)
 	}
 }
 func Error(v ...interface{}) {
@@ -203,9 +240,9 @@ func Error(v ...interface{}) {
 	}
 	if logLevel <= ERROR {
 		if logObj != nil {
-			logObj.lg.Output(2, fmt.Sprintln("error", v))
+			logObj.lg.Output(2, fmt.Sprintln("ERROR", v))
 		}
-		console("error", v)
+		console("ERROR", v...)
 	}
 }
 func Fatal(v ...interface{}) {
@@ -219,9 +256,9 @@ func Fatal(v ...interface{}) {
 	}
 	if logLevel <= FATAL {
 		if logObj != nil {
-			logObj.lg.Output(2, fmt.Sprintln("fatal", v))
+			logObj.lg.Output(2, fmt.Sprintln("FATAL", v))
 		}
-		console("fatal", v)
+		console("FATAL", v...)
 	}
 }
 
