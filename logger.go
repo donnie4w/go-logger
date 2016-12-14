@@ -46,6 +46,7 @@ const (
 	ERROR
 	FATAL
 	OFF
+	NONE
 )
 
 type _FILE struct {
@@ -86,10 +87,10 @@ func SetLevel(lv string) error {
 	case 'O':
 		logLevel = OFF
 	default:
-		logLevel = ALL
+		logLevel = NONE
 	}
 
-	if logLevel == ALL {
+	if logLevel == NONE {
 		return fmt.Errorf("log level setting error")
 	}
 	log.SetFlags(log.Ldate | log.Ltime)
