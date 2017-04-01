@@ -94,7 +94,7 @@ func SetLevel(lv string) error {
 	if logLevel == NONE {
 		return fmt.Errorf("log level setting error")
 	}
-	// log.SetFlags(log.Ldate | log.Ltime)
+	log.SetFlags(log.LstdFlags)
 	return nil
 }
 
@@ -116,7 +116,7 @@ func SetRollingFile(fileDir, fileName string, maxNumber int32, maxSize int64, _u
 	}
 	if !logObj.isMustRename() {
 		logObj.logfile, _ = os.OpenFile(path.Join(fileDir, fileName), os.O_RDWR|os.O_APPEND|os.O_CREATE, 0644)
-		logObj.lg = log.New(logObj.logfile, "", log.Ldate|log.Ltime)
+		logObj.lg = log.New(logObj.logfile, "", log.LstdFlags)
 	} else {
 		logObj.rename()
 	}
@@ -138,7 +138,7 @@ func SetRollingDaily(fileDir, fileName string) {
 			log.Fatalln(err)
 		}
 		logObj.logfile = file
-		logObj.lg = log.New(logObj.logfile, "", log.Ldate|log.Ltime)
+		logObj.lg = log.New(logObj.logfile, "", log.LstdFlags)
 	} else {
 		logObj.rename()
 	}
@@ -288,7 +288,7 @@ func (f *_FILE) rename() {
 			t, _ := time.Parse(DATEFORMAT, time.Now().Format(DATEFORMAT))
 			f._date = &t
 			f.logfile, _ = os.Create(f.dir + "/" + f.filename)
-			f.lg = log.New(logObj.logfile, "", log.Ldate|log.Ltime)
+			f.lg = log.New(logObj.logfile, "", log.LstdFlags)
 		}
 	} else {
 		f.coverNextOne()
@@ -309,7 +309,7 @@ func (f *_FILE) coverNextOne() {
 	}
 	os.Rename(f.dir+"/"+f.filename, f.dir+"/"+f.filename+"."+strconv.Itoa(int(f._suffix)))
 	f.logfile, _ = os.Create(f.dir + "/" + f.filename)
-	f.lg = log.New(logObj.logfile, "", log.Ldate|log.Ltime)
+	f.lg = log.New(logObj.logfile, "", log.LstdFlags)
 }
 
 func fileSize(file string) int64 {
