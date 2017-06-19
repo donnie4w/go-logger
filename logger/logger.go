@@ -280,7 +280,6 @@ func (f *_FILE) coverNextOne() {
 }
 
 func fileSize(file string) int64 {
-	fmt.Println("fileSize", file)
 	f, e := os.Stat(file)
 	if e != nil {
 		fmt.Println(e.Error())
