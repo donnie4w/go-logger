@@ -118,6 +118,7 @@ func GetLogger() (l *logger) {
 func getdefaultLogger() (lb *logBean) {
 	lb = &logBean{}
 	lb.mu = new(sync.Mutex)
+	lb.setConsole(true)
 	return
 }
 
@@ -251,16 +252,20 @@ func (this *logBean) log(level string, v ...interface{}) {
 		}
 		_level = FATAL
 	}
-	this.fileCheck(lg)
-	lg.addsize(int64(length))
-	if this.logLevel <= _level {
-		if lg != nil {
-			if this.format == "" {
-				lg.write(level, s)
-			} else {
-				lg.writef(this.format, v...)
+	if lg != nil {
+		this.fileCheck(lg)
+		lg.addsize(int64(length))
+		if this.logLevel <= _level {
+			if lg != nil {
+				if this.format == "" {
+					lg.write(level, s)
+				} else {
+					lg.writef(this.format, v...)
+				}
 			}
+			this.console(v...)
 		}
+	} else {
 		this.console(v...)
 	}
 }
