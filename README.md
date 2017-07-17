@@ -54,16 +54,19 @@ func log(i int) {
 ## v1.0.3
 ### 增加
 **1.输出日志格式化，与 log.Printf(format,"***")  format类型，如 **
-  1. logger.SetFormat("%s,%s")  对应参数是两个：logger.Debug("a","b")  输出：a,b
+  1. logger.SetFormat("%s,%s")  对应参数是两个：logger.Debug("a","b")  输出：a,b 
+<p/>
 **2.支持多日志对象，不同对象可以设置不同存放日志目录或日志名称**
   1. 通用配置 ：logger.SetRollingFile() ，logger.SetRollingDaily()
   2. 指定对象1   		   log1 := logger.GetLogger()   log1.SetRollingDaily("d:/logtest", "t1.log")
   3. 指定对象2   		   log2 := logger.GetLogger()   log2.SetRollingDaily("d:/logtest", "t2.log")
+<p/>
 **3.支持同一对象指定日志级别对应不同文件**
   1. logger.SetLevelFile(level LEVEL, fileDir, fileName string)
   2. 参数说明：level 日志级别 ；fileDir 日志文件夹；fileName  日志文件名
   3. 如：logger.SetLevelFile(logger.INFO, "d:/logtest", "info.log")  
   4. 如：logger.SetLevelFile(logger.WARN, "d:/logtest", "warn.log")
+<p/>
 ### 修改
   1. 重构代码
   2. 优化，去掉监控器
