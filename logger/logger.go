@@ -82,7 +82,7 @@ func SetRollingFile(fileDir, fileName string, maxNumber int32, maxSize int64, _u
 		}
 	}
 	if !logObj.isMustRename() {
-		logObj.logfile, _ = os.OpenFile(fileDir+"/"+fileName, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0655)
+		logObj.logfile, _ = os.OpenFile(fileDir+"/"+fileName, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0644)
 		logObj.lg = log.New(logObj.logfile, "", log.Ldate|log.Ltime|log.Lshortfile)
 	} else {
 		logObj.rename()
@@ -100,7 +100,7 @@ func SetRollingDaily(fileDir, fileName string) {
 	defer logObj.mu.Unlock()
 
 	if !logObj.isMustRename() {
-		logObj.logfile, _ = os.OpenFile(fileDir+"/"+fileName, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0655)
+		logObj.logfile, _ = os.OpenFile(fileDir+"/"+fileName, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0644)
 		logObj.lg = log.New(logObj.logfile, "", log.Ldate|log.Ltime|log.Lshortfile)
 	} else {
 		logObj.rename()
@@ -111,7 +111,7 @@ func mkdirlog(dir string) (e error) {
 	_, er := os.Stat(dir)
 	b := er == nil || os.IsExist(er)
 	if !b {
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0744); err != nil {
 			if os.IsPermission(err) {
 				fmt.Println("create dir error:", err.Error())
 				e = err
