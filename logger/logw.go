@@ -381,7 +381,7 @@ func mkdirlog(dir string) (e error) {
 	_, er := os.Stat(dir)
 	b := er == nil || os.IsExist(er)
 	if !b {
-		if err := os.MkdirAll(dir, 0666); err != nil {
+		if err := os.MkdirAll(dir, 0755); err != nil {
 			if os.IsPermission(err) {
 				e = err
 			}
