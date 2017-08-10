@@ -12,10 +12,6 @@ import (
 	"time"
 )
 
-const (
-	_VER string = "1.0.2"
-)
-
 type LEVEL int32
 
 var logLevel LEVEL = 1
@@ -23,10 +19,9 @@ var maxFileSize int64
 var maxFileCount int32
 var dailyRolling bool = true
 var consoleAppender bool = true
-var RollingFile bool = false
 var logObj *_FILE
 
-const DATEFORMAT = "2006-01-02"
+const DATE_FORMAT = "2006-01-02"
 
 type UNIT int64
 
@@ -65,7 +60,7 @@ func SetConsole(isConsole bool) {
 	consoleAppender = isConsole
 }
 
-func SetLevel(lv string) error {
+func SetLevel(lv string, flags int) error {
 	if lv == "" {
 		return fmt.Errorf("log level is blank")
 	}
@@ -94,14 +89,13 @@ func SetLevel(lv string) error {
 	if logLevel == NONE {
 		return fmt.Errorf("log level setting error")
 	}
-	log.SetFlags(log.LstdFlags)
+	log.SetFlags(flags)
 	return nil
 }
 
 func SetRollingFile(fileDir, fileName string, maxNumber int32, maxSize int64, _unit UNIT) {
 	maxFileCount = maxNumber
 	maxFileSize = maxSize * int64(_unit)
-	RollingFile = true
 	dailyRolling = false
 	InsureDir(fileDir)
 	logObj = &_FILE{dir: fileDir, filename: fileName, isCover: false, mu: new(sync.RWMutex)}
@@ -124,9 +118,8 @@ func SetRollingFile(fileDir, fileName string, maxNumber int32, maxSize int64, _u
 }
 
 func SetRollingDaily(fileDir, fileName string) {
-	RollingFile = false
 	dailyRolling = true
-	t, _ := time.Parse(DATEFORMAT, time.Now().Format(DATEFORMAT))
+	t, _ := time.Parse(DATE_FORMAT, time.Now().Format(DATE_FORMAT))
 	InsureDir(fileDir)
 	logObj = &_FILE{dir: fileDir, filename: fileName, _date: &t, isCover: false, mu: new(sync.RWMutex)}
 	logObj.mu.Lock()
@@ -260,7 +253,7 @@ func Fatal(v ...interface{}) {
 
 func (f *_FILE) isMustRename() bool {
 	if dailyRolling {
-		t, _ := time.Parse(DATEFORMAT, time.Now().Format(DATEFORMAT))
+		t, _ := time.Parse(DATE_FORMAT, time.Now().Format(DATE_FORMAT))
 		if t.After(*f._date) {
 			return true
 		}
@@ -276,7 +269,7 @@ func (f *_FILE) isMustRename() bool {
 
 func (f *_FILE) rename() {
 	if dailyRolling {
-		fn := f.dir + "/" + f.filename + "." + f._date.Format(DATEFORMAT)
+		fn := f.dir + "/" + f.filename + "." + f._date.Format(DATE_FORMAT)
 		if !IsExist(fn) && f.isMustRename() {
 			if f.logfile != nil {
 				f.logfile.Close()
@@ -285,7 +278,7 @@ func (f *_FILE) rename() {
 			if err != nil {
 				f.lg.Println("rename err", err.Error())
 			}
-			t, _ := time.Parse(DATEFORMAT, time.Now().Format(DATEFORMAT))
+			t, _ := time.Parse(DATE_FORMAT, time.Now().Format(DATE_FORMAT))
 			f._date = &t
 			f.logfile, _ = os.Create(f.dir + "/" + f.filename)
 			f.lg = log.New(logObj.logfile, "", log.LstdFlags)
