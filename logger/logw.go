@@ -345,6 +345,8 @@ func (this *fileBean) rename(rolltype _ROLLTYPE) {
 		os.Remove(nextfilename)
 	}
 	os.Rename(this.dir+"/"+this.filename, nextfilename)
+	t, _ := time.Parse(_DATEFORMAT, time.Now().Format(_DATEFORMAT))
+	this._date = &t
 	this.logfile, _ = os.OpenFile(this.dir+"/"+this.filename, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)
 	this.lg = log.New(this.logfile, "", log.Ldate|log.Ltime|log.Lshortfile)
 	this.filesize = fileSize(this.dir + "/" + this.filename)
