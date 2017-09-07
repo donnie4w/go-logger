@@ -294,11 +294,7 @@ func isExist(path string) bool {
 }
 
 func fileMonitor() {
-	timer := time.
-	
-	
-	
-	Ticker(1 * time.Second)
+	timer := time.NewTicker(1 * time.Second)
 	for {
 		select {
 		case <-timer.C:
