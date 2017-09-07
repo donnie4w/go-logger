@@ -276,7 +276,7 @@ func (f *_FILE) coverNextOne() {
 	}
 	os.Rename(f.dir+"/"+f.filename, f.dir+"/"+f.filename+"."+strconv.Itoa(int(f._suffix)))
 	f.logfile, _ = os.Create(f.dir + "/" + f.filename)
-	f.lg = log.New(logObj.logfile, "\n", log.Ldate|log.Ltime|log.Lshortfile)
+	f.lg = log.New(logObj.logfile, "", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func fileSize(file string) int64 {
@@ -294,7 +294,11 @@ func isExist(path string) bool {
 }
 
 func fileMonitor() {
-	timer := time.NewTicker(1 * time.Second)
+	timer := time.
+	
+	
+	
+	Ticker(1 * time.Second)
 	for {
 		select {
 		case <-timer.C:
