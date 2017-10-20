@@ -8,10 +8,11 @@ import (
 	"strconv"
 	"sync"
 	"time"
+	"syscall"
 )
 
 const (
-	_VER string = "1.0.2"
+	_VER string = "1.0.3"
 )
 
 type LEVEL int32
@@ -49,6 +50,8 @@ const (
 type _FILE struct {
 	dir      string
 	filename string
+	_dev     int32
+	_ino     uint64
 	_suffix  int
 	isCover  bool
 	_date    *time.Time
@@ -82,7 +85,8 @@ func SetRollingFile(fileDir, fileName string, maxNumber int32, maxSize int64, _u
 		}
 	}
 	if !logObj.isMustRename() {
-		logObj.logfile, _ = os.OpenFile(fileDir+"/"+fileName, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)
+		logObj.logfile, _ = os.OpenFile(fileDir + "/" + fileName, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)
+		logObj._dev, logObj._ino = filedev(fileDir + "/" + fileName)
 		logObj.lg = log.New(logObj.logfile, "", log.Ldate|log.Ltime|log.Lshortfile)
 	} else {
 		logObj.rename()
@@ -100,7 +104,8 @@ func SetRollingDaily(fileDir, fileName string) {
 	defer logObj.mu.Unlock()
 
 	if !logObj.isMustRename() {
-		logObj.logfile, _ = os.OpenFile(fileDir+"/"+fileName, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)
+		logObj.logfile, _ = os.OpenFile(fileDir + "/" + fileName, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)
+		logObj._dev, logObj._ino = filedev(fileDir + "/" + fileName)
 		logObj.lg = log.New(logObj.logfile, "", log.Ldate|log.Ltime|log.Lshortfile)
 	} else {
 		logObj.rename()
@@ -233,7 +238,17 @@ func (f *_FILE) isMustRename() bool {
 		}
 	} else {
 		if maxFileCount > 1 {
-			if fileSize(f.dir+"/"+f.filename) >= maxFileSize {
+			fileinfo, e := os.Stat(f.dir + "/" + f.filename)
+			if e != nil {
+				fmt.Println(e.Error())
+				return true
+			}
+			stat := fileinfo.Sys().(*syscall.Stat_t)
+			if fileinfo.Size() >= maxFileSize {
+				return true
+			} else if f._dev != stat.Dev {
+				return true
+			} else if f._ino != stat.Ino {
 				return true
 			}
 		}
@@ -248,13 +263,14 @@ func (f *_FILE) rename() {
 			if f.logfile != nil {
 				f.logfile.Close()
 			}
-			err := os.Rename(f.dir+"/"+f.filename, fn)
+			err := os.Rename(f.dir + "/" + f.filename, fn)
 			if err != nil {
 				f.lg.Println("rename err", err.Error())
 			}
 			t, _ := time.Parse(DATEFORMAT, time.Now().Format(DATEFORMAT))
 			f._date = &t
 			f.logfile, _ = os.Create(f.dir + "/" + f.filename)
+			f._dev, f._ino = filedev(f.dir + "/" + f.filename)
 			f.lg = log.New(logObj.logfile, "", log.Ldate|log.Ltime|log.Lshortfile)
 		}
 	} else {
@@ -274,8 +290,9 @@ func (f *_FILE) coverNextOne() {
 	if isExist(f.dir + "/" + f.filename + "." + strconv.Itoa(int(f._suffix))) {
 		os.Remove(f.dir + "/" + f.filename + "." + strconv.Itoa(int(f._suffix)))
 	}
-	os.Rename(f.dir+"/"+f.filename, f.dir+"/"+f.filename+"."+strconv.Itoa(int(f._suffix)))
+	os.Rename(f.dir + "/" + f.filename, f.dir + "/" + f.filename + "." +strconv.Itoa(int(f._suffix)))
 	f.logfile, _ = os.Create(f.dir + "/" + f.filename)
+	f._dev, f._ino = filedev(f.dir + "/" + f.filename)
 	f.lg = log.New(logObj.logfile, "", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
@@ -288,13 +305,19 @@ func fileSize(file string) int64 {
 	return f.Size()
 }
 
+func filedev(file string) (int32, uint64) {
+	fileinfo, _ := os.Stat(file)
+	stat := fileinfo.Sys().(*syscall.Stat_t)
+	return stat.Dev, stat.Ino
+}
+
 func isExist(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil || os.IsExist(err)
 }
 
 func fileMonitor() {
-	timer := time.NewTicker(1 * time.Second)
+	timer := time.NewTicker(3 * time.Second)
 	for {
 		select {
 		case <-timer.C:
