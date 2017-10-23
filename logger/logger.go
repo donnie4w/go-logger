@@ -233,9 +233,9 @@ func (f *_FILE) isMustRename() bool {
 			stat := fileinfo.Sys().(*syscall.Stat_t)
 			if fileinfo.Size() >= maxFileSize {
 				return true
-			} else if f._dev != stat.Dev {
+			} else if f._dev != 0 && f._dev != stat.Dev {
 				return true
-			} else if f._ino != stat.Ino {
+			} else if f._ino != 0 && f._ino != stat.Ino {
 				return true
 			}
 		}
