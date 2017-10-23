@@ -5,6 +5,7 @@ import (
     "sync"
     "os"
     "log"
+	"syscall"
 )
 
 type _FILE struct {
