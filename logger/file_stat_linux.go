@@ -19,3 +19,9 @@ type _FILE struct {
 	logfile  *os.File
 	lg       *log.Logger
 }
+
+func filedev(file string) (uint64, uint64) {
+	fileinfo, _ := os.Stat(file)
+	stat := fileinfo.Sys().(*syscall.Stat_t)
+	return stat.Dev, stat.Ino
+}

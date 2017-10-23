@@ -292,12 +292,6 @@ func fileSize(file string) int64 {
 	return f.Size()
 }
 
-func filedev(file string) (int32, uint64) {
-	fileinfo, _ := os.Stat(file)
-	stat := fileinfo.Sys().(*syscall.Stat_t)
-	return stat.Dev, stat.Ino
-}
-
 func isExist(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil || os.IsExist(err)

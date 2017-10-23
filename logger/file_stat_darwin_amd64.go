@@ -5,6 +5,7 @@ import (
     "sync"
     "os"
     "log"
+	"syscall"
 )
 
 type _FILE struct {
@@ -18,4 +19,10 @@ type _FILE struct {
 	mu       *sync.RWMutex
 	logfile  *os.File
 	lg       *log.Logger
+}
+
+func filedev(file string) (int32, uint64) {
+	fileinfo, _ := os.Stat(file)
+	stat := fileinfo.Sys().(*syscall.Stat_t)
+	return stat.Dev, stat.Ino
 }
