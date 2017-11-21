@@ -121,7 +121,7 @@ func mkdirlog(dir string) (e error) {
 	return
 }
 
-func console(s ...interface{}) {
+func console(s string) {
 	if consoleAppender {
 		_, file, line, _ := runtime.Caller(2)
 		short := file
@@ -153,10 +153,11 @@ func Debug(v ...interface{}) {
 	}
 
 	if logLevel <= DEBUG {
+		strValue := "[DEBUG]:" + fmt.Sprint(v...)
 		if logObj != nil {
-			logObj.lg.Output(2, fmt.Sprintln("debug", v))
+			logObj.lg.Output(2, strValue)
 		}
-		console("debug", v)
+		console(strValue)
 	}
 }
 func Info(v ...interface{}) {
@@ -169,10 +170,11 @@ func Info(v ...interface{}) {
 		defer logObj.mu.RUnlock()
 	}
 	if logLevel <= INFO {
+		strValue := "[INFO]:" + fmt.Sprint(v...)
 		if logObj != nil {
-			logObj.lg.Output(2, fmt.Sprintln("info", v))
+			logObj.lg.Output(2, strValue)
 		}
-		console("info", v)
+		console(strValue)
 	}
 }
 func Warn(v ...interface{}) {
@@ -186,10 +188,11 @@ func Warn(v ...interface{}) {
 	}
 
 	if logLevel <= WARN {
+		strValue := "[WARN]:" + fmt.Sprint(v...)
 		if logObj != nil {
-			logObj.lg.Output(2, fmt.Sprintln("warn", v))
+			logObj.lg.Output(2, strValue)
 		}
-		console("warn", v)
+		console(strValue)
 	}
 }
 func Error(v ...interface{}) {
@@ -202,10 +205,11 @@ func Error(v ...interface{}) {
 		defer logObj.mu.RUnlock()
 	}
 	if logLevel <= ERROR {
+		strValue := "[ERROR]:" + fmt.Sprint(v...)
 		if logObj != nil {
-			logObj.lg.Output(2, fmt.Sprintln("error", v))
+			logObj.lg.Output(2, strValue)
 		}
-		console("error", v)
+		console(strValue)
 	}
 }
 func Fatal(v ...interface{}) {
@@ -218,10 +222,11 @@ func Fatal(v ...interface{}) {
 		defer logObj.mu.RUnlock()
 	}
 	if logLevel <= FATAL {
+		strValue := "[FATAL]:" + fmt.Sprint(v...)
 		if logObj != nil {
-			logObj.lg.Output(2, fmt.Sprintln("fatal", v))
+			logObj.lg.Output(2, strValue)
 		}
-		console("fatal", v)
+		console(strValue)
 	}
 }
 
