@@ -39,15 +39,15 @@ const (
 )
 
 func SetConsole(isConsole bool) {
-	defaultlog.setConsole(isConsole)
+	Defaultlog.setConsole(isConsole)
 }
 
 func SetLevel(_level LEVEL) {
-	defaultlog.setLevel(_level)
+	Defaultlog.setLevel(_level)
 }
 
 func SetFormat(logFormat string) {
-	defaultlog.setFormat(logFormat)
+	Defaultlog.setFormat(logFormat)
 }
 
 func SetRollingFile(fileDir, fileName string, maxNumber int32, maxSize int64, _unit UNIT) {
@@ -73,7 +73,7 @@ func SetRollingFile(fileDir, fileName string, maxNumber int32, maxSize int64, _u
 	//		logObj.rename()
 	//	}
 	//	go fileMonitor()
-	defaultlog.setRollingFile(fileDir, fileName, maxNumber, maxSize, _unit)
+	Defaultlog.setRollingFile(fileDir, fileName, maxNumber, maxSize, _unit)
 }
 
 func SetRollingDaily(fileDir, fileName string) {
@@ -90,7 +90,7 @@ func SetRollingDaily(fileDir, fileName string) {
 	//	} else {
 	//		logObj.rename()
 	//	}
-	defaultlog.setRollingDaily(fileDir, fileName)
+	Defaultlog.setRollingDaily(fileDir, fileName)
 }
 
 //func console(s ...interface{}) {
@@ -129,7 +129,7 @@ func Debug(v ...interface{}) {
 	//		}
 	//		console("debug", v)
 	//	}
-	defaultlog.debug(v...)
+	Defaultlog.debug(v...)
 }
 func Info(v ...interface{}) {
 	//	if dailyRolling {
@@ -150,7 +150,7 @@ func Info(v ...interface{}) {
 	//		}
 	//		console("info", v)
 	//	}
-	defaultlog.info(v...)
+	Defaultlog.info(v...)
 }
 func Warn(v ...interface{}) {
 	//	if dailyRolling {
@@ -167,7 +167,7 @@ func Warn(v ...interface{}) {
 	//		}
 	//		console("warn", v)
 	//	}
-	defaultlog.warn(v...)
+	Defaultlog.warn(v...)
 }
 func Error(v ...interface{}) {
 	//	if dailyRolling {
@@ -184,7 +184,7 @@ func Error(v ...interface{}) {
 	//		}
 	//		console("error", v)
 	//	}
-	defaultlog.error(v...)
+	Defaultlog.error(v...)
 }
 func Fatal(v ...interface{}) {
 	//	if dailyRolling {
@@ -201,11 +201,11 @@ func Fatal(v ...interface{}) {
 	//		}
 	//		console("fatal", v)
 	//	}
-	defaultlog.fatal(v...)
+	Defaultlog.fatal(v...)
 }
 
 func SetLevelFile(level LEVEL, dir, fileName string) {
-	defaultlog.setLevelFile(level, dir, fileName)
+	Defaultlog.setLevelFile(level, dir, fileName)
 }
 
 //func isMustRename() bool {
