@@ -60,6 +60,8 @@ func SetConsole(isConsole bool) {
 	consoleAppender = isConsole
 }
 
+var USER_LOG_FLAGS = log.LstdFlags
+
 func SetLevel(lv string, flags int) error {
 	if lv == "" {
 		return fmt.Errorf("log level is blank")
@@ -90,6 +92,7 @@ func SetLevel(lv string, flags int) error {
 		return fmt.Errorf("log level setting error")
 	}
 	log.SetFlags(flags)
+	USER_LOG_FLAGS = flags
 	return nil
 }
 
@@ -110,7 +113,7 @@ func SetRollingFile(fileDir, fileName string, maxNumber int32, maxSize int64, _u
 	}
 	if !logObj.isMustRename() {
 		logObj.logfile, _ = os.OpenFile(path.Join(fileDir, fileName), os.O_RDWR|os.O_APPEND|os.O_CREATE, 0644)
-		logObj.lg = log.New(logObj.logfile, "", log.LstdFlags)
+		logObj.lg = log.New(logObj.logfile, "", USER_LOG_FLAGS)
 	} else {
 		logObj.rename()
 	}
@@ -131,7 +134,7 @@ func SetRollingDaily(fileDir, fileName string) {
 			log.Fatalln(err)
 		}
 		logObj.logfile = file
-		logObj.lg = log.New(logObj.logfile, "", log.LstdFlags)
+		logObj.lg = log.New(logObj.logfile, "", USER_LOG_FLAGS)
 	} else {
 		logObj.rename()
 	}
@@ -281,7 +284,7 @@ func (f *_FILE) rename() {
 			t, _ := time.Parse(DATE_FORMAT, time.Now().Format(DATE_FORMAT))
 			f._date = &t
 			f.logfile, _ = os.Create(f.dir + "/" + f.filename)
-			f.lg = log.New(logObj.logfile, "", log.LstdFlags)
+			f.lg = log.New(logObj.logfile, "", USER_LOG_FLAGS)
 		}
 	} else {
 		f.coverNextOne()
@@ -302,7 +305,7 @@ func (f *_FILE) coverNextOne() {
 	}
 	os.Rename(f.dir+"/"+f.filename, f.dir+"/"+f.filename+"."+strconv.Itoa(int(f._suffix)))
 	f.logfile, _ = os.Create(f.dir + "/" + f.filename)
-	f.lg = log.New(logObj.logfile, "", log.LstdFlags)
+	f.lg = log.New(logObj.logfile, "", USER_LOG_FLAGS)
 }
 
 func fileSize(file string) int64 {
