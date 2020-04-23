@@ -154,7 +154,7 @@ func IsExist(fp string) bool {
 	return err == nil || os.IsExist(err)
 }
 
-func console(level string, v ...interface{}) {
+func console(level, format string, v ...interface{}) {
 	if consoleAppender {
 		_, file, line, _ := runtime.Caller(2)
 		short := file
@@ -167,15 +167,19 @@ func console(level string, v ...interface{}) {
 		file = short
 
 		var args []interface{}
-		args = append(args, fmt.Sprintf("[%s] %s:%d", level, file, line))
+		if logObj != nil {
+			args = append(args, level)
+			args = append(args, file)
+			args = append(args, line)
+		}
 		for i := 0; i < len(v); i++ {
 			args = append(args, v[i])
 		}
 
 		if logObj != nil {
-			logObj.lg.Println(args...)
+			logObj.lg.Printf("[%s] %s:%d " + format + "\n", args...)
 		} else {
-			log.Println(args...)
+			log.Printf(format + "\n", args...)
 		}
 	}
 }
@@ -186,7 +190,7 @@ func catchError() {
 	}
 }
 
-func Debug(v ...interface{}) {
+func Debug(format string, v ...interface{}) {
 	if dailyRolling {
 		fileCheck()
 	}
@@ -197,10 +201,10 @@ func Debug(v ...interface{}) {
 	}
 
 	if logLevel <= DEBUG {
-		console("DEBUG", v...)
+		console("DEBUG", format, v...)
 	}
 }
-func Info(v ...interface{}) {
+func Info(format string, v ...interface{}) {
 	if dailyRolling {
 		fileCheck()
 	}
@@ -210,10 +214,10 @@ func Info(v ...interface{}) {
 		defer logObj.mu.RUnlock()
 	}
 	if logLevel <= INFO {
-		console("INFO", v...)
+		console("INFO", format, v...)
 	}
 }
-func Warn(v ...interface{}) {
+func Warn(format string, v ...interface{}) {
 	if dailyRolling {
 		fileCheck()
 	}
@@ -224,10 +228,10 @@ func Warn(v ...interface{}) {
 	}
 
 	if logLevel <= WARN {
-		console("WARN", v...)
+		console("WARN", format, v...)
 	}
 }
-func Error(v ...interface{}) {
+func Error(format string, v ...interface{}) {
 	if dailyRolling {
 		fileCheck()
 	}
@@ -237,10 +241,10 @@ func Error(v ...interface{}) {
 		defer logObj.mu.RUnlock()
 	}
 	if logLevel <= ERROR {
-		console("ERROR", v...)
+		console("ERROR", format, v...)
 	}
 }
-func Fatal(v ...interface{}) {
+func Fatal(format string, v ...interface{}) {
 	if dailyRolling {
 		fileCheck()
 	}
@@ -250,7 +254,7 @@ func Fatal(v ...interface{}) {
 		defer logObj.mu.RUnlock()
 	}
 	if logLevel <= FATAL {
-		console("FATAL", v...)
+		console("FATAL", format, v...)
 	}
 }
 

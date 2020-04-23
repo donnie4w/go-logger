@@ -6,9 +6,10 @@ import (
 	"strconv"
 	"testing"
 	"time"
+	"log"
 )
 
-func log(i int) {
+func Log_Print(i int) {
 	logger.Debug("Debug>>>>>>>>>>>>>>>>>>>>>>" + strconv.Itoa(i))
 	logger.Info("Info>>>>>>>>>>>>>>>>>>>>>>>>>" + strconv.Itoa(i))
 	logger.Warn("Warn>>>>>>>>>>>>>>>>>>>>>>>>>" + strconv.Itoa(i))
@@ -36,10 +37,10 @@ func Test_RollingDaily(t *testing.T) {
 
 	//指定日志级别  ALL，DEBUG，INFO，WARN，ERROR，FATAL，OFF 级别由低到高
 	//一般习惯是测试阶段为debug，生成环境为info以上
-	logger.SetLevel("error")
+	logger.SetLevel("ERROR", log.LstdFlags)
 
 	for i := 10000; i > 0; i-- {
-		go log(i)
+		go Log_Print(i)
 		time.Sleep(1000 * time.Millisecond)
 	}
 	time.Sleep(15 * time.Second)
