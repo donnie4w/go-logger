@@ -3,31 +3,31 @@
 级别概念 类似java日志工具log4j
 
 **设置日志打印格式：**
-如： SetFormat(FORMAT_SHORTFILENAME|FORMAT_DATE|FORMAT_TIME)
-	无其他格式，只打印日志内容
-	FORMAT_NANO
-	长文件名及行数
-	FORMAT_LONGFILENAME
-	短文件名及行数
-	FORMAT_SHORTFILENAME
-	精确到日期
-	FORMAT_DATE
-	精确到秒
-	FORMAT_TIME
-	精确到微秒
-	FORMAT_MICROSECNDS
+如： SetFormat(FORMAT_SHORTFILENAME|FORMAT_DATE|FORMAT_TIME)<br>
+	无其他格式，只打印日志内容<br>
+	FORMAT_NANO<br>
+	长文件名及行数<br>
+	FORMAT_LONGFILENAME<br>
+	短文件名及行数<br>
+	FORMAT_SHORTFILENAME<br>
+	精确到日期<br>
+	FORMAT_DATE<br>
+	精确到秒<br>
+	FORMAT_TIME<br>
+	精确到微秒<br>
+	FORMAT_MICROSECNDS<br>
 
-**需写日志文件时，可以获取实例**
-    全局单实例可以直接调用        log := logging.GetStaticLogger() 
-    要求多实例可获取新实例可以调用 log := logging.NewLogger()
-**1. 按日期分割日志文件**
-    	log.SetRollingDaily("d://foldTest", "log.txt")
-	每天按 log_20221015.txt格式备份
-**2. 按文件大小分割日志文件**
-	log.SetRollingFile("d://foldTest", "log.txt", 300, MB)
-	按文件超过300MB是，按log.1.txt，log.2.txt 格式备份
-**控制台**
-	log.SetConsole(false)控制台不打日志,默认值true
+**需写日志文件时，可以获取实例**<br>
+    全局单实例可以直接调用        log := logging.GetStaticLogger() <br>
+    要求多实例可获取新实例可以调用 log := logging.NewLogger()<br>
+**1. 按日期分割日志文件**<br>
+    	log.SetRollingDaily("d://foldTest", "log.txt")<br>
+	每天按 log_20221015.txt格式备份<br>
+**2. 按文件大小分割日志文件**<br>
+	log.SetRollingFile("d://foldTest", "log.txt", 300, MB)<br>
+	按文件超过300MB是，按log.1.txt，log.2.txt 格式备份<br>
+**控制台**<br>
+	log.SetConsole(false)控制台不打日志,默认值true<br>
   
 ***
 
