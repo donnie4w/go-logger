@@ -4,6 +4,8 @@
 
 ## **设置日志打印格式：**
 如： SetFormat(FORMAT_SHORTFILENAME|FORMAT_DATE|FORMAT_TIME)<br>
+**FORMAT_SHORTFILENAME|FORMAT_DATE|FORMAT_TIME 为默认格式<br>
+不调用SetFormat()时，使用默认格式**
 
 	无其他格式，只打印日志内容	FORMAT_NANO		无格式
 	长文件名及行数			FORMAT_LONGFILENAME		全路径
@@ -11,12 +13,13 @@
 	精确到日期			FORMAT_DATE		如：2023/02/14
 	精确到秒				FORMAT_TIME		如：01:33:27
 	精确到微秒			FORMAT_MICROSECNDS
+	
 打印结果形如：[DEBUG]2023/02/14 01:33:27 logging_test.go:10: 11111111111111 <br>
 若需要**自定义格式** 只需要 SetFormat(FORMAT_NANO) ，既可以去掉原有格式。<br>
 
 ## **日志级别**
 **ALL < DEBUG < INFO < WARN < ERROR < FATAL < OFF** <br>
-默认日志级别为ALL，说明： <br>
+**默认日志级别为ALL**，说明： <br>
 
 	若设置 INFO
 	如：SetLevel(INFO)
