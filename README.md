@@ -1,6 +1,7 @@
 ### go-logger 是golang 的日志库 ，基于对golang内置log的封装。
 **在控制台打印：直接调用 Debug()，Info()，Warn(), Error() ,Fatal() 日志级别由低到高**
-级别概念 类似java日志工具log4j
+级别概念 
+**类似java日志工具log4j和python的logging**
 
 ## **设置日志打印格式：**
 如： SetFormat(FORMAT_SHORTFILENAME|FORMAT_DATE|FORMAT_TIME)<br>
