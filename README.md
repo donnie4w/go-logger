@@ -1,15 +1,15 @@
-### go-logger 是golang 的日志库 ，基于对golang内置log的封装。
-**在控制台打印：直接调用 Debug()，Info()，Warn(), Error() ,Fatal() 日志级别由低到高**
+### go-logger 是golang 的极简日志库
+**日志打印：调用 Debug()，Info()，Warn(), Error() ,Fatal() 日志级别由低到高**
 级别概念 
-**类似java日志工具log4j和python的logging**
+**功能用法类似java日志工具log4j 或 python的logging**
 
 ## **设置日志打印格式：**
 如： SetFormat(FORMAT_SHORTFILENAME|FORMAT_DATE|FORMAT_TIME)<br>
 **FORMAT_SHORTFILENAME|FORMAT_DATE|FORMAT_TIME 为默认格式<br>
 不调用SetFormat()时，使用默认格式**
 
-	无其他格式，只打印日志内容	FORMAT_NANO		无格式
-	长文件名及行数			FORMAT_LONGFILENAME		全路径
+	无其他格式，只打印日志内容	FORMAT_NANO	无格式
+	长文件名及行数			FORMAT_LONGFILENAME	全路径
 	短文件名及行数			FORMAT_SHORTFILENAME	如：logging_test.go:10
 	精确到日期			FORMAT_DATE		如：2023/02/14
 	精确到秒				FORMAT_TIME		如：01:33:27
@@ -36,7 +36,10 @@
 **需将日志写入文件时，则要设置日志文件名**<br>
     使用全局对象log时，直接调用设置方法：
 
-	SetRollingDaily()或SetRollingFile()
+	SetRollingDaily()		按日期分割
+	SetRollingByTime()		可按 小时，天，月 分割日志
+	SetRollingFile()		指定文件大小分割日志
+	SetRollingFileLoop()		指定文件大小分割日志，并指定保留最大日志文件数
 需要**多实例**指定不同日志文件时：<br>
 
 	log1 := logger.NewLogger()
@@ -51,12 +54,28 @@
 	log.SetRollingDaily("d://foldTest", "log.txt")
 	每天按 log_20221015.txt格式 分割
 	若 log_20221015.txt已经存在，则生成 log_20221015.1.txt ，log_20221015.2.txt等文件
+	
+	log.SetRollingByTime("d://foldTest", "log.txt",MODE_MONTH)
+	按月份分割日志，跨月时，保留上月份日志，如：
+		log_202210.txt
+		log_202211.txt
+		log_202212.txt
+	
+	log.SetRollingByTime("d://foldTest", "log.txt",MODE_HOUR)
+	按小时分割日志, 如：
+		log_2022101506.txt
+		log_2022101507.txt
+		log_2022101508.txt
 
 **2. 按文件大小分割日志文件**
 
 	log.SetRollingFile("d://foldTest", "log.txt", 300, MB)
 	按文件超过300MB是，按log.1.txt，log.2.txt 格式备份
 	目录参数可以为空，则默认当前目录。
+	
+	log.SetRollingFileLoop(`d://foldTest`, "log.txt", 300, MB, 50) 
+	设置日志文件大小最大为300M
+	日志文件只保留最新的50个
 
 **控制台日志设置**
 
@@ -67,7 +86,12 @@
 
 ### 打印日志示例：
 
-	// SetRollingFile("", "log.txt", 1000, KB)  设置日志文件信息
+	//SetRollingFile("", "log.txt", 1000, KB)  设置日志文件信息
+	//SetRollingFileLoop(``, "log.txt", 300, MB, 50)   设置日志文件大小300M，最多保留50个最近的日志文件
+	//SetRollingByTime(``, "log.txt", MODE_MONTH) 按月份分割日志
+	//SetRollingByTime(``, "log.txt", MODE_HOUR)  按小时分割日志
+	//SetRollingByTime(``, "log.txt", MODE_DAY)  按天分割日志与调用SetRollingDaily("", "log.txt") 作用相同
+	
 	// SetConsole(false)  控制台打印信息，默认true
 	Debug("11111111")
 	Info("22222222")

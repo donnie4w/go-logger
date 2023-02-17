@@ -7,7 +7,9 @@ import (
 	"io"
 	"log"
 	"os"
+	"regexp"
 	"runtime/debug"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -48,15 +50,16 @@ const (
 
 type _LEVEL int8
 type _UNIT int64
-type _TIME uint8
+type _MODE_TIME uint8
 type _ROLLTYPE int //dailyRolling ,rollingFile
 type _FORMAT int
 
-const _DATEFORMAT = "20060102"
+const _DATEFORMAT_DAY = "20060102"
+const _DATEFORMAT_HOUR = "2006010215"
+const _DATEFORMAT_MONTH = "200601"
 
 var static_mu *sync.Mutex = new(sync.Mutex)
 
-// var _isGlobal = false
 var static_lo *_logger = NewLogger()
 
 const (
@@ -65,6 +68,12 @@ const (
 	MB
 	GB
 	TB
+)
+
+const (
+	MODE_HOUR  _MODE_TIME = 1
+	MODE_DAY   _MODE_TIME = 2
+	MODE_MONTH _MODE_TIME = 3
 )
 
 const (
@@ -84,28 +93,28 @@ const (
 
 const (
 	/*日志级别：ALL 最低级别*/
-	ALL _LEVEL = iota
+	LEVEL_ALL _LEVEL = iota
 	/*日志级别：DEBUG 小于INFO*/
-	DEBUG
+	LEVEL_DEBUG
 	/*日志级别：INFO 小于 WARN*/
-	INFO
+	LEVEL_INFO
 	/*日志级别：WARN 小于 ERROR*/
-	WARN
+	LEVEL_WARN
 	/*日志级别：ERROR 小于 FATAL*/
-	ERROR
+	LEVEL_ERROR
 	/*日志级别：FATAL 小于 OFF*/
-	FATAL
+	LEVEL_FATAL
 	/*日志级别：off 不打印任何日志*/
-	OFF
+	LEVEL_OFF
 )
 
 const (
-	_DAILY _ROLLTYPE = iota
+	_DAYLY _ROLLTYPE = iota
 	_ROLLFILE
 )
 
 var default_format _FORMAT = FORMAT_SHORTFILENAME | FORMAT_DATE | FORMAT_TIME
-var default_level = ALL
+var default_level = LEVEL_ALL
 
 /*设置打印格式*/
 func SetFormat(format _FORMAT) {
@@ -120,65 +129,56 @@ func SetLevel(level _LEVEL) {
 	static_lo.SetLevel(level)
 }
 
+func SetConsole(on bool) {
+	static_lo.SetConsole(on)
+}
+
 /*获得全局Logger对象*/
 func GetStaticLogger() *_logger {
 	return _staticLogger()
 }
 
 func SetRollingFile(fileDir, fileName string, maxFileSize int64, unit _UNIT) (err error) {
-	return static_lo.SetRollingFile(fileDir, fileName, maxFileSize, unit)
+	return SetRollingFileLoop(fileDir, fileName, maxFileSize, unit, 0)
 }
 
 func SetRollingDaily(fileDir, fileName string) (err error) {
-	return static_lo.SetRollingDaily(fileDir, fileName)
+	return SetRollingByTime(fileDir, fileName, MODE_DAY)
 }
 
-/**
-设置全局log对象，默认false，则不获取对象时，默认控制台打印
-true时，默认全局共用一个log对象，可设置 日志文件
-*/
-// func SetGlobal(isGlobal bool) *_logger {
-// 	_isGlobal = isGlobal
-// 	return _staticLogger()
-// }
+func SetRollingFileLoop(fileDir, fileName string, maxFileSize int64, unit _UNIT, maxFileNum int) (err error) {
+	return static_lo.SetRollingFileLoop(fileDir, fileName, maxFileSize, unit, maxFileNum)
+}
+
+func SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (err error) {
+	return static_lo.SetRollingByTime(fileDir, fileName, mode)
+}
 
 func _staticLogger() *_logger {
-	// if static_lo != nil {
-	// 	return static_lo
-	// }
-	// static_mu.Lock()
-	// defer static_mu.Unlock()
-	// if static_lo == nil {
-	// 	static_lo = NewLogger()
-	// }
 	return static_lo
 }
 
 func Debug(v ...interface{}) {
-	_print(default_format, DEBUG, default_level, 2, v...)
+	_print(default_format, LEVEL_DEBUG, default_level, 2, v...)
 }
 func Info(v ...interface{}) {
-	_print(default_format, INFO, default_level, 2, v...)
+	_print(default_format, LEVEL_INFO, default_level, 2, v...)
 }
 func Warn(v ...interface{}) {
-	_print(default_format, WARN, default_level, 2, v...)
+	_print(default_format, LEVEL_WARN, default_level, 2, v...)
 }
 func Error(v ...interface{}) {
-	_print(default_format, ERROR, default_level, 2, v...)
+	_print(default_format, LEVEL_ERROR, default_level, 2, v...)
 }
 func Fatal(v ...interface{}) {
-	_print(default_format, FATAL, default_level, 2, v...)
+	_print(default_format, LEVEL_FATAL, default_level, 2, v...)
 }
 
 func _print(_format _FORMAT, level, _default_level _LEVEL, calldepth int, v ...interface{}) {
 	if level < _default_level {
 		return
 	}
-	// if _isGlobal {
 	_staticLogger().println(level, k1(calldepth), v...)
-	// } else {
-	// 	_console(fmt.Sprint(v...), getlevelname(level, default_format), _format, k1(calldepth))
-	// }
 }
 
 func __print(_format _FORMAT, level, _default_level _LEVEL, calldepth int, v ...interface{}) {
@@ -190,17 +190,17 @@ func getlevelname(level _LEVEL, format _FORMAT) (levelname string) {
 		return
 	}
 	switch level {
-	case ALL:
+	case LEVEL_ALL:
 		levelname = "[ALL]"
-	case DEBUG:
+	case LEVEL_DEBUG:
 		levelname = "[DEBUG]"
-	case INFO:
+	case LEVEL_INFO:
 		levelname = "[INFO]"
-	case WARN:
+	case LEVEL_WARN:
 		levelname = "[WARN]"
-	case ERROR:
+	case LEVEL_ERROR:
 		levelname = "[ERROR]"
-	case FATAL:
+	case LEVEL_FATAL:
 		levelname = "[FATAL]"
 	default:
 	}
@@ -209,21 +209,23 @@ func getlevelname(level _LEVEL, format _FORMAT) (levelname string) {
 
 /*————————————————————————————————————————————————————————————————————————————*/
 type _logger struct {
-	_level     _LEVEL
-	_format    _FORMAT
-	_rwLock    *sync.RWMutex
-	_safe      bool
-	_fileDir   string
-	_fileName  string
-	_maxSize   int64
-	_unit      _UNIT
-	_rolltype  _ROLLTYPE
-	_fileObj   *fileObj
-	_isConsole bool
+	_level      _LEVEL
+	_format     _FORMAT
+	_rwLock     *sync.RWMutex
+	_safe       bool
+	_fileDir    string
+	_fileName   string
+	_maxSize    int64
+	_unit       _UNIT
+	_rolltype   _ROLLTYPE
+	_mode       _MODE_TIME
+	_fileObj    *fileObj
+	_maxFileNum int
+	_isConsole  bool
 }
 
 func NewLogger() (log *_logger) {
-	log = &_logger{_level: DEBUG, _rolltype: _DAILY, _rwLock: new(sync.RWMutex), _format: FORMAT_SHORTFILENAME | FORMAT_DATE | FORMAT_TIME, _isConsole: true}
+	log = &_logger{_level: LEVEL_DEBUG, _rolltype: _DAYLY, _rwLock: new(sync.RWMutex), _format: FORMAT_SHORTFILENAME | FORMAT_DATE | FORMAT_TIME, _isConsole: true}
 	log.newfileObj()
 	return
 }
@@ -233,19 +235,19 @@ func (this *_logger) SetConsole(_isConsole bool) {
 	this._isConsole = _isConsole
 }
 func (this *_logger) Debug(v ...interface{}) {
-	this.println(DEBUG, 2, v...)
+	this.println(LEVEL_DEBUG, 2, v...)
 }
 func (this *_logger) Info(v ...interface{}) {
-	this.println(INFO, 2, v...)
+	this.println(LEVEL_INFO, 2, v...)
 }
 func (this *_logger) Warn(v ...interface{}) {
-	this.println(WARN, 2, v...)
+	this.println(LEVEL_WARN, 2, v...)
 }
 func (this *_logger) Error(v ...interface{}) {
-	this.println(ERROR, 2, v...)
+	this.println(LEVEL_ERROR, 2, v...)
 }
 func (this *_logger) Fatal(v ...interface{}) {
-	this.println(FATAL, 2, v...)
+	this.println(LEVEL_FATAL, 2, v...)
 }
 func (this *_logger) SetFormat(format _FORMAT) {
 	this._format = format
@@ -261,19 +263,30 @@ maxFileSize  日志文件大小最大值
 unit    日志文件大小单位
 */
 func (this *_logger) SetRollingFile(fileDir, fileName string, maxFileSize int64, unit _UNIT) (err error) {
+	return this.SetRollingFileLoop(fileDir, fileName, maxFileSize, unit, 0)
+}
+
+/*按日志文件大小分割日志文件，指定保留的最大日志文件数
+fileDir 日志文件夹路径
+fileName 日志文件名
+maxFileSize  日志文件大小最大值
+unit    	日志文件大小单位
+maxFileNum  留的日志文件数
+*/
+func (this *_logger) SetRollingFileLoop(fileDir, fileName string, maxFileSize int64, unit _UNIT, maxFileNum int) (err error) {
 	if fileDir == "" {
 		fileDir, _ = os.Getwd()
 	}
-	this._fileDir, this._fileName, this._maxSize, this._unit = fileDir, fileName, maxFileSize, unit
+	if maxFileNum > 0 {
+		maxFileNum--
+	}
+	this._fileDir, this._fileName, this._maxSize, this._maxFileNum, this._unit = fileDir, fileName, maxFileSize, maxFileNum, unit
 	this._rolltype = _ROLLFILE
 	if this._fileObj != nil {
 		this._fileObj.close()
 	}
 	this.newfileObj()
 	err = this._fileObj.openFileHandler()
-	if err != nil {
-		Fatal(err.Error())
-	}
 	return
 }
 
@@ -282,43 +295,54 @@ fileDir 日志文件夹路径
 fileName 日志文件名
 */
 func (this *_logger) SetRollingDaily(fileDir, fileName string) (err error) {
+	return this.SetRollingByTime(fileDir, fileName, MODE_DAY)
+}
+
+/*指定按 小时，天，月 分割日志文件
+fileDir 日志文件夹路径
+fileName 日志文件名
+mode   指定 小时，天，月
+*/
+func (this *_logger) SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (err error) {
 	if fileDir == "" {
 		fileDir, _ = os.Getwd()
 	}
-	this._fileDir, this._fileName = fileDir, fileName
-	this._rolltype = _DAILY
+	this._fileDir, this._fileName, this._mode = fileDir, fileName, mode
+	this._rolltype = _DAYLY
 	if this._fileObj != nil {
 		this._fileObj.close()
 	}
 	this.newfileObj()
 	err = this._fileObj.openFileHandler()
-	if err != nil {
-		Fatal(err.Error())
-	}
-	return
-}
-
-func (this *_logger) SetRollingByTime(fileDir, fileName string, rolltype _TIME) (err error) {
 	return
 }
 
 func (this *_logger) newfileObj() {
 	this._fileObj = new(fileObj)
-	this._fileObj._fileDir, this._fileObj._fileName, this._fileObj._maxSize, this._fileObj._rolltype, this._fileObj._unit = this._fileDir, this._fileName, this._maxSize, this._rolltype, this._unit
+	this._fileObj._fileDir, this._fileObj._fileName, this._fileObj._maxSize, this._fileObj._rolltype, this._fileObj._unit, this._fileObj._maxFileNum, this._fileObj._mode = this._fileDir, this._fileName, this._maxSize, this._rolltype, this._unit, this._maxFileNum, this._mode
 }
 
-func (this *_logger) backUp() {
+func (this *_logger) backUp() (err, openFileErr error) {
 	this._rwLock.Lock()
 	defer this._rwLock.Unlock()
 	if !this._fileObj.isMustBackUp() {
 		return
 	}
-	this._fileObj.close()
-	err := this._fileObj.rename()
+	err = this._fileObj.close()
 	if err != nil {
-		_print(this._format, FATAL, FATAL, 4, err.Error())
+		__print(this._format, LEVEL_ERROR, LEVEL_ERROR, 1, err.Error())
+		return
 	}
-	this._fileObj.openFileHandler()
+	err = this._fileObj.rename()
+	if err != nil {
+		__print(this._format, LEVEL_ERROR, LEVEL_ERROR, 1, err.Error())
+		return
+	}
+	openFileErr = this._fileObj.openFileHandler()
+	if openFileErr != nil {
+		__print(this._format, LEVEL_ERROR, LEVEL_ERROR, 1, openFileErr.Error())
+	}
+	return
 }
 
 func (this *_logger) println(_level _LEVEL, calldepth int, v ...interface{}) {
@@ -326,16 +350,19 @@ func (this *_logger) println(_level _LEVEL, calldepth int, v ...interface{}) {
 		return
 	}
 	if this._fileObj._isFileWell {
+		var openFileErr error
 		if this._fileObj.isMustBackUp() {
-			this.backUp()
+			_, openFileErr = this.backUp()
 		}
-		func() {
-			this._rwLock.RLock()
-			defer this._rwLock.RUnlock()
-			s := fmt.Sprint(v...)
-			buf := getOutBuffer(s, getlevelname(_level, this._format), this._format, k1(calldepth)+1)
-			this._fileObj.write2file(buf.Bytes())
-		}()
+		if openFileErr == nil {
+			func() {
+				this._rwLock.RLock()
+				defer this._rwLock.RUnlock()
+				s := fmt.Sprint(v...)
+				buf := getOutBuffer(s, getlevelname(_level, this._format), this._format, k1(calldepth)+1)
+				this._fileObj.write2file(buf.Bytes())
+			}()
+		}
 	}
 	if this._isConsole {
 		__print(this._format, _level, this._level, k1(calldepth), v...)
@@ -351,9 +378,10 @@ type fileObj struct {
 	_unit        _UNIT
 	_fileHandler *os.File
 	_rolltype    _ROLLTYPE
-	// _fileCreateDate *time.Time
 	_tomorSecond int64
 	_isFileWell  bool
+	_maxFileNum  int
+	_mode        _MODE_TIME
 }
 
 func (this *fileObj) openFileHandler() (e error) {
@@ -369,12 +397,12 @@ func (this *fileObj) openFileHandler() (e error) {
 	fname := fmt.Sprint(this._fileDir, "/", this._fileName)
 	this._fileHandler, e = os.OpenFile(fname, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 	if e != nil {
-		_print(default_format, FATAL, FATAL, 4, e.Error())
+		__print(default_format, LEVEL_ERROR, LEVEL_ERROR, 1, e.Error())
 		this._isFileWell = false
 		return
 	}
 	this._isFileWell = true
-	this._tomorSecond = tomorSecond()
+	this._tomorSecond = tomorSecond(this._mode)
 	fs, err := this._fileHandler.Stat()
 	if err == nil {
 		this._fileSize = fs.Size()
@@ -399,7 +427,7 @@ func (this *fileObj) write2file(bs []byte) (e error) {
 
 func (this *fileObj) isMustBackUp() bool {
 	switch this._rolltype {
-	case _DAILY:
+	case _DAYLY:
 		if time.Now().Unix() >= this._tomorSecond {
 			return true
 		}
@@ -411,8 +439,8 @@ func (this *fileObj) isMustBackUp() bool {
 
 func (this *fileObj) rename() (err error) {
 	bckupfilename := ""
-	if this._rolltype == _DAILY {
-		bckupfilename = getBackupDayliFileName(this._fileDir, this._fileName)
+	if this._rolltype == _DAYLY {
+		bckupfilename = getBackupDayliFileName(this._fileDir, this._fileName, this._mode)
 	} else {
 		bckupfilename, err = getBackupRollFileName(this._fileDir, this._fileName)
 	}
@@ -420,25 +448,52 @@ func (this *fileObj) rename() (err error) {
 		oldPath := fmt.Sprint(this._fileDir, "/", this._fileName)
 		newPath := fmt.Sprint(this._fileDir, "/", bckupfilename)
 		err = os.Rename(oldPath, newPath)
+		if err == nil && this._rolltype == _ROLLFILE && this._maxFileNum > 0 {
+			go _rmOverCountFile(this._fileDir, bckupfilename, this._maxFileNum)
+		}
 	}
 	return
 }
 
-func (this *fileObj) close() {
+func (this *fileObj) close() (err error) {
 	defer catchError()
 	if this._fileHandler != nil {
-		this._fileHandler.Close()
+		err = this._fileHandler.Close()
+	}
+	return
+}
+
+func tomorSecond(mode _MODE_TIME) int64 {
+	now := time.Now()
+	switch mode {
+	case MODE_DAY:
+		return time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location()).Unix()
+	case MODE_HOUR:
+		return time.Date(now.Year(), now.Month(), now.Day(), now.Hour()+1, 0, 0, 0, now.Location()).Unix()
+	case MODE_MONTH:
+		return time.Date(now.Year(), now.Month()+1, 0, 0, 0, 0, 0, now.Location()).AddDate(0, 0, 1).Unix()
+	default:
+		return time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location()).Unix()
 	}
 }
 
-func tomorSecond() int64 {
+func _yestStr(mode _MODE_TIME) string {
 	now := time.Now()
-	return time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location()).Unix()
+	switch mode {
+	case MODE_DAY:
+		return now.AddDate(0, 0, -1).Format(_DATEFORMAT_DAY)
+	case MODE_HOUR:
+		return now.Add(-1 * time.Hour).Format(_DATEFORMAT_HOUR)
+	case MODE_MONTH:
+		return now.AddDate(0, -1, 0).Format(_DATEFORMAT_MONTH)
+	default:
+		return now.AddDate(0, 0, -1).Format(_DATEFORMAT_DAY)
+	}
 }
 
 /*————————————————————————————————————————————————————————————————————————————*/
-func getBackupDayliFileName(dir, filename string) (bckupfilename string) {
-	timeStr := time.Now().AddDate(0, 0, -1).Format(_DATEFORMAT)
+func getBackupDayliFileName(dir, filename string, mode _MODE_TIME) (bckupfilename string) {
+	timeStr := _yestStr(mode)
 	index := strings.LastIndex(filename, ".")
 	if index <= 0 {
 		index = len(filename)
@@ -452,8 +507,17 @@ func getBackupDayliFileName(dir, filename string) (bckupfilename string) {
 	return
 }
 
+func _getDirList(dir string) ([]os.DirEntry, error) {
+	f, err := os.Open(dir)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return f.ReadDir(-1)
+}
+
 func getBackupRollFileName(dir, filename string) (bckupfilename string, er error) {
-	list, err := os.ReadDir(dir)
+	list, err := _getDirList(dir)
 	if err != nil {
 		er = err
 		return
@@ -523,4 +587,57 @@ func catchError() {
 	if err := recover(); err != nil {
 		Fatal(string(debug.Stack()))
 	}
+}
+
+func _rmOverCountFile(dir, backupfileName string, maxFileNum int) {
+	static_mu.Lock()
+	defer static_mu.Unlock()
+	f, err := os.Open(dir)
+	if err != nil {
+		return
+	}
+	dirs, _ := f.ReadDir(-1)
+	f.Close()
+	if len(dirs) <= maxFileNum {
+		return
+	}
+	sort.Slice(dirs, func(i, j int) bool {
+		f1, _ := dirs[i].Info()
+		f2, _ := dirs[j].Info()
+		return f1.ModTime().Unix() > f2.ModTime().Unix()
+	})
+	index := strings.LastIndex(backupfileName, "_")
+	indexSuffix := strings.LastIndex(backupfileName, ".")
+	if indexSuffix == 0 {
+		indexSuffix = len(backupfileName)
+	}
+	prefixname := backupfileName[:index+1]
+	suffix := backupfileName[indexSuffix:]
+	suffixlen := len(suffix)
+	rmfiles := make([]string, 0)
+	i := 0
+	for _, f := range dirs {
+		if len(f.Name()) > len(prefixname) && f.Name()[:len(prefixname)] == prefixname && _matchString("^[0-9]+$", f.Name()[len(prefixname):len(f.Name())-suffixlen]) {
+			finfo, err := f.Info()
+			if err == nil && !finfo.IsDir() {
+				i++
+				if i > maxFileNum {
+					rmfiles = append(rmfiles, fmt.Sprint(dir, "/", f.Name()))
+				}
+			}
+		}
+	}
+	if len(rmfiles) > 0 {
+		for _, k := range rmfiles {
+			os.Remove(k)
+		}
+	}
+}
+
+func _matchString(pattern string, s string) bool {
+	b, err := regexp.MatchString(pattern, s)
+	if err != nil {
+		b = false
+	}
+	return b
 }
