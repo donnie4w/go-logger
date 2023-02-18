@@ -45,7 +45,7 @@ author:donnie email donnie4w@gmail.com
 ***/
 
 const (
-	_VER string = "1.0.1"
+	_VER string = "2.0.1"
 )
 
 type _LEVEL int8
@@ -79,7 +79,7 @@ const (
 const (
 	/*无其他格式，只打印日志内容*/
 	FORMAT_NANO _FORMAT = 0
-	/*长文件名及行数*/
+	/*长文件名(文件绝对路径)及行数*/
 	FORMAT_LONGFILENAME = _FORMAT(log.Llongfile)
 	/*短文件名及行数*/
 	FORMAT_SHORTFILENAME = _FORMAT(log.Lshortfile)
@@ -358,9 +358,14 @@ func (this *_logger) println(_level _LEVEL, calldepth int, v ...interface{}) {
 			func() {
 				this._rwLock.RLock()
 				defer this._rwLock.RUnlock()
-				s := fmt.Sprint(v...)
-				buf := getOutBuffer(s, getlevelname(_level, this._format), this._format, k1(calldepth)+1)
-				this._fileObj.write2file(buf.Bytes())
+				if this._format != FORMAT_NANO {
+					s := fmt.Sprint(v...)
+					buf := getOutBuffer(s, getlevelname(_level, this._format), this._format, k1(calldepth)+1)
+					this._fileObj.write2file(buf.Bytes())
+				} else {
+					var bs []byte
+					this._fileObj.write2file(fmt.Appendln(bs, v...))
+				}
 			}()
 		}
 	}
@@ -547,8 +552,12 @@ func _write2file(f *os.File, bs []byte) (e error) {
 }
 
 func _console(s string, levelname string, flag _FORMAT, calldepth int) {
-	buf := getOutBuffer(s, levelname, flag, k1(calldepth))
-	fmt.Print(&buf)
+	if flag != FORMAT_NANO {
+		buf := getOutBuffer(s, levelname, flag, k1(calldepth))
+		fmt.Print(&buf)
+	} else {
+		fmt.Println(s)
+	}
 }
 
 func outwriter(out io.Writer, prefix string, flag _FORMAT, calldepth int, s string) {

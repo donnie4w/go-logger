@@ -45,7 +45,3 @@ func Test_LogOne(t *testing.T) {
 	log.Fatal("eeeeeeeeeeeeeeeeeeeeeee")
 	time.Sleep(2 * time.Second)
 }
-
-func Test_print(t *testing.T) {
-	__print(default_format, LEVEL_ERROR, LEVEL_ERROR, 0, 22222222222)
-}
