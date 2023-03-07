@@ -117,20 +117,20 @@ var default_format _FORMAT = FORMAT_SHORTFILENAME | FORMAT_DATE | FORMAT_TIME
 var default_level = LEVEL_ALL
 
 /*设置打印格式*/
-func SetFormat(format _FORMAT) {
+func SetFormat(format _FORMAT) *_logger {
 	default_format = format
-	static_lo.SetFormat(format)
-
+	return static_lo.SetFormat(format)
 }
 
 /*设置控制台日志级别，默认ALL*/
-func SetLevel(level _LEVEL) {
+func SetLevel(level _LEVEL) *_logger {
 	default_level = level
-	static_lo.SetLevel(level)
+	return static_lo.SetLevel(level)
 }
 
-func SetConsole(on bool) {
-	static_lo.SetConsole(on)
+func SetConsole(on bool) *_logger {
+	return static_lo.SetConsole(on)
+
 }
 
 /*获得全局Logger对象*/
@@ -230,9 +230,10 @@ func NewLogger() (log *_logger) {
 	return
 }
 
-//控制台日志是否打开
-func (this *_logger) SetConsole(_isConsole bool) {
+// 控制台日志是否打开
+func (this *_logger) SetConsole(_isConsole bool) *_logger {
 	this._isConsole = _isConsole
+	return this
 }
 func (this *_logger) Debug(v ...interface{}) {
 	this.println(LEVEL_DEBUG, 2, v...)
@@ -249,14 +250,17 @@ func (this *_logger) Error(v ...interface{}) {
 func (this *_logger) Fatal(v ...interface{}) {
 	this.println(LEVEL_FATAL, 2, v...)
 }
-func (this *_logger) SetFormat(format _FORMAT) {
+func (this *_logger) SetFormat(format _FORMAT) *_logger {
 	this._format = format
+	return this
 }
-func (this *_logger) SetLevel(level _LEVEL) {
+func (this *_logger) SetLevel(level _LEVEL) *_logger {
 	this._level = level
+	return this
 }
 
-/*按日志文件大小分割日志文件
+/*
+按日志文件大小分割日志文件
 fileDir 日志文件夹路径
 fileName 日志文件名
 maxFileSize  日志文件大小最大值
@@ -266,7 +270,8 @@ func (this *_logger) SetRollingFile(fileDir, fileName string, maxFileSize int64,
 	return this.SetRollingFileLoop(fileDir, fileName, maxFileSize, unit, 0)
 }
 
-/*按日志文件大小分割日志文件，指定保留的最大日志文件数
+/*
+按日志文件大小分割日志文件，指定保留的最大日志文件数
 fileDir 日志文件夹路径
 fileName 日志文件名
 maxFileSize  日志文件大小最大值
@@ -290,7 +295,8 @@ func (this *_logger) SetRollingFileLoop(fileDir, fileName string, maxFileSize in
 	return
 }
 
-/*按日期分割日志文件
+/*
+按日期分割日志文件
 fileDir 日志文件夹路径
 fileName 日志文件名
 */
@@ -298,7 +304,8 @@ func (this *_logger) SetRollingDaily(fileDir, fileName string) (err error) {
 	return this.SetRollingByTime(fileDir, fileName, MODE_DAY)
 }
 
-/*指定按 小时，天，月 分割日志文件
+/*
+指定按 小时，天，月 分割日志文件
 fileDir 日志文件夹路径
 fileName 日志文件名
 mode   指定 小时，天，月
