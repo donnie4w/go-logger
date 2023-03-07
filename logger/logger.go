@@ -138,19 +138,19 @@ func GetStaticLogger() *_logger {
 	return _staticLogger()
 }
 
-func SetRollingFile(fileDir, fileName string, maxFileSize int64, unit _UNIT) (err error) {
+func SetRollingFile(fileDir, fileName string, maxFileSize int64, unit _UNIT) (l *_logger, err error) {
 	return SetRollingFileLoop(fileDir, fileName, maxFileSize, unit, 0)
 }
 
-func SetRollingDaily(fileDir, fileName string) (err error) {
+func SetRollingDaily(fileDir, fileName string) (l *_logger, err error) {
 	return SetRollingByTime(fileDir, fileName, MODE_DAY)
 }
 
-func SetRollingFileLoop(fileDir, fileName string, maxFileSize int64, unit _UNIT, maxFileNum int) (err error) {
+func SetRollingFileLoop(fileDir, fileName string, maxFileSize int64, unit _UNIT, maxFileNum int) (l *_logger, err error) {
 	return static_lo.SetRollingFileLoop(fileDir, fileName, maxFileSize, unit, maxFileNum)
 }
 
-func SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (err error) {
+func SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (l *_logger, err error) {
 	return static_lo.SetRollingByTime(fileDir, fileName, mode)
 }
 
@@ -266,7 +266,7 @@ fileName 日志文件名
 maxFileSize  日志文件大小最大值
 unit    日志文件大小单位
 */
-func (this *_logger) SetRollingFile(fileDir, fileName string, maxFileSize int64, unit _UNIT) (err error) {
+func (this *_logger) SetRollingFile(fileDir, fileName string, maxFileSize int64, unit _UNIT) (l *_logger, err error) {
 	return this.SetRollingFileLoop(fileDir, fileName, maxFileSize, unit, 0)
 }
 
@@ -278,7 +278,7 @@ maxFileSize  日志文件大小最大值
 unit    	日志文件大小单位
 maxFileNum  留的日志文件数
 */
-func (this *_logger) SetRollingFileLoop(fileDir, fileName string, maxFileSize int64, unit _UNIT, maxFileNum int) (err error) {
+func (this *_logger) SetRollingFileLoop(fileDir, fileName string, maxFileSize int64, unit _UNIT, maxFileNum int) (l *_logger, err error) {
 	if fileDir == "" {
 		fileDir, _ = os.Getwd()
 	}
@@ -292,7 +292,7 @@ func (this *_logger) SetRollingFileLoop(fileDir, fileName string, maxFileSize in
 	}
 	this.newfileObj()
 	err = this._fileObj.openFileHandler()
-	return
+	return this, err
 }
 
 /*
@@ -300,7 +300,7 @@ func (this *_logger) SetRollingFileLoop(fileDir, fileName string, maxFileSize in
 fileDir 日志文件夹路径
 fileName 日志文件名
 */
-func (this *_logger) SetRollingDaily(fileDir, fileName string) (err error) {
+func (this *_logger) SetRollingDaily(fileDir, fileName string) (l *_logger, err error) {
 	return this.SetRollingByTime(fileDir, fileName, MODE_DAY)
 }
 
@@ -310,7 +310,7 @@ fileDir 日志文件夹路径
 fileName 日志文件名
 mode   指定 小时，天，月
 */
-func (this *_logger) SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (err error) {
+func (this *_logger) SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (l *_logger, err error) {
 	if fileDir == "" {
 		fileDir, _ = os.Getwd()
 	}
@@ -321,7 +321,7 @@ func (this *_logger) SetRollingByTime(fileDir, fileName string, mode _MODE_TIME)
 	}
 	this.newfileObj()
 	err = this._fileObj.openFileHandler()
-	return
+	return this, err
 }
 
 func (this *_logger) newfileObj() {
