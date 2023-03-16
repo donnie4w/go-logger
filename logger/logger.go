@@ -1,3 +1,5 @@
+// Copyright (c) , donnie <donnie4w@gmail.com>
+// All rights reserved.
 package logger
 
 import (
@@ -17,7 +19,6 @@ import (
 )
 
 /***
-author:donnie email donnie4w@gmail.com
 在控制台打印：直接调用 Debug(***) Info(***) Warn(***) Error(***) Fatal(***)
 可以设置打印格式：SetFormat(FORMAT_SHORTFILENAME|FORMAT_DATE|FORMAT_TIME)
 	无其他格式，只打印日志内容
@@ -61,6 +62,8 @@ const _DATEFORMAT_MONTH = "200601"
 var static_mu *sync.Mutex = new(sync.Mutex)
 
 var static_lo *_logger = NewLogger()
+
+var TIME_DEVIATION time.Duration
 
 const (
 	_        = iota
@@ -440,7 +443,7 @@ func (this *fileObj) write2file(bs []byte) (e error) {
 func (this *fileObj) isMustBackUp() bool {
 	switch this._rolltype {
 	case _DAYLY:
-		if time.Now().Unix() >= this._tomorSecond {
+		if _time().Unix() >= this._tomorSecond {
 			return true
 		}
 	case _ROLLFILE:
@@ -476,7 +479,7 @@ func (this *fileObj) close() (err error) {
 }
 
 func tomorSecond(mode _MODE_TIME) int64 {
-	now := time.Now()
+	now := _time()
 	switch mode {
 	case MODE_DAY:
 		return time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location()).Unix()
@@ -490,7 +493,7 @@ func tomorSecond(mode _MODE_TIME) int64 {
 }
 
 func _yestStr(mode _MODE_TIME) string {
-	now := time.Now()
+	now := _time()
 	switch mode {
 	case MODE_DAY:
 		return now.AddDate(0, 0, -1).Format(_DATEFORMAT_DAY)
@@ -656,4 +659,12 @@ func _matchString(pattern string, s string) bool {
 		b = false
 	}
 	return b
+}
+
+func _time() time.Time {
+	if TIME_DEVIATION != 0 {
+		return time.Now().Add(TIME_DEVIATION)
+	} else {
+		return time.Now()
+	}
 }
