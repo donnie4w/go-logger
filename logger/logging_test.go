@@ -45,3 +45,19 @@ func Test_LogOne(t *testing.T) {
 	log.Fatal("eeeeeeeeeeeeeeeeeeeeeee")
 	time.Sleep(2 * time.Second)
 }
+
+func BenchmarkSerialLog(b *testing.B) {
+	b.StopTimer()
+	log := NewLogger()
+	log.SetRollingFile(`D:\cfoldTest`, "log1.txt", 100, MB)
+	log.SetConsole(false)
+	// log.SetFormat(FORMAT_NANO)
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		// log.Write([]byte(">>>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
+		log.Debug(i, ">>>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+		// log.Info(i, ">>>bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+		// log.Warn(i, ">>>cccccccccccccccccccccccccccccccccccc")
+		// log.log.Error(i, ">>>dddddddddddddddddddddddddddddddddddd")
+	}
+}
