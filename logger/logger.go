@@ -4,6 +4,7 @@ package logger
 
 import (
 	"bytes"
+	"compress/gzip"
 	"errors"
 	"fmt"
 	"io"
@@ -18,35 +19,8 @@ import (
 	"time"
 )
 
-/***
-在控制台打印：直接调用 Debug(***) Info(***) Warn(***) Error(***) Fatal(***)
-可以设置打印格式：SetFormat(FORMAT_SHORTFILENAME|FORMAT_DATE|FORMAT_TIME)
-	无其他格式，只打印日志内容
-	FORMAT_NANO
-	长文件名及行数
-	FORMAT_LONGFILENAME
-	短文件名及行数
-	FORMAT_SHORTFILENAME
-	精确到日期
-	FORMAT_DATE
-	精确到秒
-	FORMAT_TIME
-	精确到微秒
-	FORMAT_MICROSECNDS
-	—————————————————————————————————————————————————————————————————————
-    写日志文件可以获取实例
-    全局实例可以直接调用log := logging.GetStaticLogger()
-    获取新实例可以调用log := logging.NewLogger()
-	1. 按日期分割日志文件
-    	log.SetRollingDaily("d://foldTest", "log.txt")
-	2. 按文件大小分割日志文件
-	log.SetRollingFile("d://foldTest", "log.txt", 300, MB)
-	log.SetConsole(false)控制台不打日志,默认值true
-    日志级别
-***/
-
 const (
-	_VER string = "2.0.1"
+	_VER string = "2.0.2"
 )
 
 type _LEVEL int8
@@ -80,34 +54,45 @@ const (
 )
 
 const (
-	/*无其他格式，只打印日志内容*/
-	FORMAT_NANO _FORMAT = 0
-	/*长文件名(文件绝对路径)及行数*/
+	/*无其他格式，只打印日志内容*/ /*no format, Only log content is printed*/
+	FORMAT_NANO       _FORMAT = 0
+
+	/*长文件名(文件绝对路径)及行数*/ /*full file name and line number*/
 	FORMAT_LONGFILENAME = _FORMAT(log.Llongfile)
-	/*短文件名及行数*/
+
+	/*短文件名及行数*/          /*final file name element and line number*/
 	FORMAT_SHORTFILENAME = _FORMAT(log.Lshortfile)
-	/*日期时间精确到天*/
-	FORMAT_DATE = _FORMAT(log.Ldate)
-	/*时间精确到秒*/
+
+	/*日期时间精确到天*/ /*the date in the local time zone: 2009/01/23*/
+	FORMAT_DATE  = _FORMAT(log.Ldate)
+
+	/*时间精确到秒*/  /*the time in the local time zone: 01:23:23*/
 	FORMAT_TIME = _FORMAT(log.Ltime)
-	/*时间精确到微秒*/
+
+	/*时间精确到微秒*/        /*microsecond resolution: 01:23:23.123123.*/
 	FORMAT_MICROSECNDS = _FORMAT(log.Lmicroseconds)
 )
 
 const (
-	/*日志级别：ALL 最低级别*/
-	LEVEL_ALL _LEVEL = iota
-	/*日志级别：DEBUG 小于INFO*/
+	/*日志级别：ALL 最低级别*/ /*Log level: LEVEL_ALL is the lowest level,If the log level is this level, logs of other levels can be printed*/
+	LEVEL_ALL         _LEVEL = iota
+
+	/*日志级别：DEBUG 小于INFO*/ /*Log level: ALL<DEBUG<INFO*/
 	LEVEL_DEBUG
-	/*日志级别：INFO 小于 WARN*/
+
+	/*日志级别：INFO 小于 WARN*/ /*Log level: DEBUG<INFO<WARN*/
 	LEVEL_INFO
-	/*日志级别：WARN 小于 ERROR*/
+
+	/*日志级别：WARN 小于 ERROR*/ /*Log level: INFO<WARN<ERROR*/
 	LEVEL_WARN
-	/*日志级别：ERROR 小于 FATAL*/
+
+	/*日志级别：ERROR 小于 FATAL*/ /*Log level: WARN<ERROR<FATAL*/
 	LEVEL_ERROR
-	/*日志级别：FATAL 小于 OFF*/
+
+	/*日志级别：FATAL 小于 OFF*/ /*Log level: ERROR<FATAL<OFF*/
 	LEVEL_FATAL
-	/*日志级别：off 不打印任何日志*/
+
+	/*日志级别：off 不打印任何日志*/ /*Log level: LEVEL_OFF means none of the logs can be printed*/
 	LEVEL_OFF
 )
 
@@ -126,55 +111,90 @@ func SetFormat(format _FORMAT) *_logger {
 }
 
 /*设置控制台日志级别，默认ALL*/
+// Setting the log Level
 func SetLevel(level _LEVEL) *_logger {
 	default_level = level
 	return static_lo.SetLevel(level)
 }
 
+// print logs on the console or not. default true
 func SetConsole(on bool) *_logger {
 	return static_lo.SetConsole(on)
 
 }
 
-/*获得全局Logger对象*/
+/*获得全局Logger对象*/ /*return the default log object*/
 func GetStaticLogger() *_logger {
 	return _staticLogger()
 }
 
+// when the log file(fileDir+`\`+fileName) exceeds the specified size(maxFileSize), it will be backed up with a specified file name
+// Parameters:
+//   - fileDir   :directory where log files are stored, If it is the current directory, you also can set it to ""
+//   - fileName  : log file name
+//   - maxFileSize :  maximum size of a log file
+//   - unit		   :  size unit :  KB,MB,GB,TB
 func SetRollingFile(fileDir, fileName string, maxFileSize int64, unit _UNIT) (l *_logger, err error) {
 	return SetRollingFileLoop(fileDir, fileName, maxFileSize, unit, 0)
 }
 
+// yesterday's log data is backed up to a specified log file each day
+// Parameters:
+//   - fileDir   :directory where log files are stored, If it is the current directory, you also can set it to ""
+//   - fileName  : log file name
 func SetRollingDaily(fileDir, fileName string) (l *_logger, err error) {
 	return SetRollingByTime(fileDir, fileName, MODE_DAY)
 }
 
+// like SetRollingFile,but only keep (maxFileNum) current files
+// - maxFileNum : the number of files that are retained
 func SetRollingFileLoop(fileDir, fileName string, maxFileSize int64, unit _UNIT, maxFileNum int) (l *_logger, err error) {
 	return static_lo.SetRollingFileLoop(fileDir, fileName, maxFileSize, unit, maxFileNum)
 }
 
+// like SetRollingDaily,but supporte hourly backup ,dayly backup and monthly backup
+// mode : 	MODE_HOUR    MODE_DAY   MODE_MONTH
 func SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (l *_logger, err error) {
 	return static_lo.SetRollingByTime(fileDir, fileName, mode)
+}
+
+// when set true, the specified backup file of both SetRollingFile and SetRollingFileLoop will be save as a compressed file
+func SetGzipOn(is bool) (l *_logger) {
+	return static_lo.SetGzipOn(is)
 }
 
 func _staticLogger() *_logger {
 	return static_lo
 }
 
-func Debug(v ...interface{}) {
+// Logs are printed at the DEBUG level
+func Debug(v ...interface{}) *_logger {
 	_print(default_format, LEVEL_DEBUG, default_level, 2, v...)
+	return _staticLogger()
 }
-func Info(v ...interface{}) {
+
+// Logs are printed at the INFO level
+func Info(v ...interface{}) *_logger {
 	_print(default_format, LEVEL_INFO, default_level, 2, v...)
+	return _staticLogger()
 }
-func Warn(v ...interface{}) {
+
+// Logs are printed at the WARN level
+func Warn(v ...interface{}) *_logger {
 	_print(default_format, LEVEL_WARN, default_level, 2, v...)
+	return _staticLogger()
 }
-func Error(v ...interface{}) {
+
+// Logs are printed at the ERROR level
+func Error(v ...interface{}) *_logger {
 	_print(default_format, LEVEL_ERROR, default_level, 2, v...)
+	return _staticLogger()
 }
-func Fatal(v ...interface{}) {
+
+// Logs are printed at the FATAL level
+func Fatal(v ...interface{}) *_logger {
 	_print(default_format, LEVEL_FATAL, default_level, 2, v...)
+	return _staticLogger()
 }
 
 func _print(_format _FORMAT, level, _default_level _LEVEL, calldepth int, v ...interface{}) {
@@ -225,8 +245,10 @@ type _logger struct {
 	_fileObj    *fileObj
 	_maxFileNum int
 	_isConsole  bool
+	_gzip       bool
 }
 
+// return a new log object
 func NewLogger() (log *_logger) {
 	log = &_logger{_level: LEVEL_DEBUG, _rolltype: _DAYLY, _rwLock: new(sync.RWMutex), _format: FORMAT_SHORTFILENAME | FORMAT_DATE | FORMAT_TIME, _isConsole: true}
 	log.newfileObj()
@@ -238,21 +260,43 @@ func (this *_logger) SetConsole(_isConsole bool) *_logger {
 	this._isConsole = _isConsole
 	return this
 }
-func (this *_logger) Debug(v ...interface{}) {
+func (this *_logger) Debug(v ...interface{}) *_logger {
 	this.println(LEVEL_DEBUG, 2, v...)
+	return this
 }
-func (this *_logger) Info(v ...interface{}) {
+func (this *_logger) Info(v ...interface{}) *_logger {
 	this.println(LEVEL_INFO, 2, v...)
+	return this
 }
-func (this *_logger) Warn(v ...interface{}) {
+func (this *_logger) Warn(v ...interface{}) *_logger {
 	this.println(LEVEL_WARN, 2, v...)
+	return this
 }
-func (this *_logger) Error(v ...interface{}) {
+func (this *_logger) Error(v ...interface{}) *_logger {
 	this.println(LEVEL_ERROR, 2, v...)
+	return this
 }
-func (this *_logger) Fatal(v ...interface{}) {
+func (this *_logger) Fatal(v ...interface{}) *_logger {
 	this.println(LEVEL_FATAL, 2, v...)
+	return this
 }
+
+func (this *_logger) Write(bs []byte) (err error, bakfn string) {
+	if this._fileObj._isFileWell {
+		var openFileErr error
+		if this._fileObj.isMustBackUp() {
+			err, openFileErr, bakfn = this.backUp()
+		}
+		if openFileErr == nil {
+			this._rwLock.RLock()
+			defer this._rwLock.RUnlock()
+			_, err = this._fileObj.write2file(bs)
+			return
+		}
+	}
+	return
+}
+
 func (this *_logger) SetFormat(format _FORMAT) *_logger {
 	this._format = format
 	return this
@@ -327,12 +371,20 @@ func (this *_logger) SetRollingByTime(fileDir, fileName string, mode _MODE_TIME)
 	return this, err
 }
 
-func (this *_logger) newfileObj() {
-	this._fileObj = new(fileObj)
-	this._fileObj._fileDir, this._fileObj._fileName, this._fileObj._maxSize, this._fileObj._rolltype, this._fileObj._unit, this._fileObj._maxFileNum, this._fileObj._mode = this._fileDir, this._fileName, this._maxSize, this._rolltype, this._unit, this._maxFileNum, this._mode
+func (this *_logger) SetGzipOn(is bool) *_logger {
+	this._gzip = is
+	if this._fileObj != nil {
+		this._fileObj._gzip = is
+	}
+	return this
 }
 
-func (this *_logger) backUp() (err, openFileErr error) {
+func (this *_logger) newfileObj() {
+	this._fileObj = new(fileObj)
+	this._fileObj._fileDir, this._fileObj._fileName, this._fileObj._maxSize, this._fileObj._rolltype, this._fileObj._unit, this._fileObj._maxFileNum, this._fileObj._mode, this._fileObj._gzip = this._fileDir, this._fileName, this._maxSize, this._rolltype, this._unit, this._maxFileNum, this._mode, this._gzip
+}
+
+func (this *_logger) backUp() (err, openFileErr error, bakfn string) {
 	this._rwLock.Lock()
 	defer this._rwLock.Unlock()
 	if !this._fileObj.isMustBackUp() {
@@ -343,7 +395,7 @@ func (this *_logger) backUp() (err, openFileErr error) {
 		__print(this._format, LEVEL_ERROR, LEVEL_ERROR, 1, err.Error())
 		return
 	}
-	err = this._fileObj.rename()
+	err, bakfn = this._fileObj.rename()
 	if err != nil {
 		__print(this._format, LEVEL_ERROR, LEVEL_ERROR, 1, err.Error())
 		return
@@ -362,7 +414,7 @@ func (this *_logger) println(_level _LEVEL, calldepth int, v ...interface{}) {
 	if this._fileObj._isFileWell {
 		var openFileErr error
 		if this._fileObj.isMustBackUp() {
-			_, openFileErr = this.backUp()
+			_, openFileErr, _ = this.backUp()
 		}
 		if openFileErr == nil {
 			func() {
@@ -372,9 +424,11 @@ func (this *_logger) println(_level _LEVEL, calldepth int, v ...interface{}) {
 					s := fmt.Sprint(v...)
 					buf := getOutBuffer(s, getlevelname(_level, this._format), this._format, k1(calldepth)+1)
 					this._fileObj.write2file(buf.Bytes())
+					bufferpool.Put(buf)
 				} else {
-					var bs []byte
+					bs := bytepool.Get(sizeof(v))
 					this._fileObj.write2file(fmt.Appendln(bs, v...))
+					bytepool.Put(bs)
 				}
 			}()
 		}
@@ -397,6 +451,7 @@ type fileObj struct {
 	_isFileWell  bool
 	_maxFileNum  int
 	_mode        _MODE_TIME
+	_gzip        bool
 }
 
 func (this *fileObj) openFileHandler() (e error) {
@@ -418,8 +473,7 @@ func (this *fileObj) openFileHandler() (e error) {
 	}
 	this._isFileWell = true
 	this._tomorSecond = tomorSecond(this._mode)
-	fs, err := this._fileHandler.Stat()
-	if err == nil {
+	if fs, err := this._fileHandler.Stat(); err == nil {
 		this._fileSize = fs.Size()
 	} else {
 		e = err
@@ -431,11 +485,12 @@ func (this *fileObj) addFileSize(size int64) {
 	atomic.AddInt64(&this._fileSize, size)
 }
 
-func (this *fileObj) write2file(bs []byte) (e error) {
+func (this *fileObj) write2file(bs []byte) (n int, e error) {
 	defer catchError()
 	if bs != nil {
-		this.addFileSize(int64(len(bs)))
-		_write2file(this._fileHandler, bs)
+		if n, e = _write2file(this._fileHandler, bs); e == nil {
+			this.addFileSize(int64(n))
+		}
 	}
 	return
 }
@@ -452,20 +507,26 @@ func (this *fileObj) isMustBackUp() bool {
 	return false
 }
 
-func (this *fileObj) rename() (err error) {
-	bckupfilename := ""
+func (this *fileObj) rename() (err error, bckupfilename string) {
 	if this._rolltype == _DAYLY {
-		bckupfilename = getBackupDayliFileName(this._fileDir, this._fileName, this._mode)
+		bckupfilename = getBackupDayliFileName(this._fileDir, this._fileName, this._mode, this._gzip)
 	} else {
-		bckupfilename, err = getBackupRollFileName(this._fileDir, this._fileName)
+		bckupfilename, err = getBackupRollFileName(this._fileDir, this._fileName, this._gzip)
 	}
 	if bckupfilename != "" && err == nil {
 		oldPath := fmt.Sprint(this._fileDir, "/", this._fileName)
 		newPath := fmt.Sprint(this._fileDir, "/", bckupfilename)
 		err = os.Rename(oldPath, newPath)
-		if err == nil && this._rolltype == _ROLLFILE && this._maxFileNum > 0 {
-			go _rmOverCountFile(this._fileDir, bckupfilename, this._maxFileNum)
-		}
+		go func() {
+			if err == nil && this._gzip {
+				if err = lgzip(fmt.Sprint(newPath, ".gz"), bckupfilename, newPath); err == nil {
+					os.Remove(newPath)
+				}
+			}
+			if err == nil && this._rolltype == _ROLLFILE && this._maxFileNum > 0 {
+				_rmOverCountFile(this._fileDir, bckupfilename, this._maxFileNum, this._gzip)
+			}
+		}()
 	}
 	return
 }
@@ -507,7 +568,97 @@ func _yestStr(mode _MODE_TIME) string {
 }
 
 /*————————————————————————————————————————————————————————————————————————————*/
-func getBackupDayliFileName(dir, filename string, mode _MODE_TIME) (bckupfilename string) {
+var bytepool = newBytePool()
+
+type bytePool struct {
+	pool   [6]sync.Pool
+	router [6]int
+}
+
+func newBytePool() *bytePool {
+	p := &bytePool{}
+	p.pool = [6]sync.Pool{
+		{New: func() any { return make([]byte, 0) }},
+		{New: func() any { return make([]byte, 0) }},
+		{New: func() any { return make([]byte, 0) }},
+		{New: func() any { return make([]byte, 0) }},
+		{New: func() any { return make([]byte, 0) }},
+		{New: func() any { return make([]byte, 0) }},
+	}
+	p.router = [6]int{8, 32, 64, 128, 256, 512}
+	return p
+}
+
+func (this *bytePool) Get(minsize int) []byte {
+	pre := this.getRouter(minsize)
+	return this.pool[pre].Get().([]byte)
+}
+
+func (this *bytePool) Put(bs []byte) {
+	if bs != nil {
+		pre := this.getRouter(len(bs))
+		bs = bs[:0]
+		this.pool[pre].Put(bs)
+	}
+}
+
+func (this *bytePool) getRouter(size int) (pre int) {
+	for i, v := range this.router {
+		if size >= v {
+			pre = i
+			break
+		}
+	}
+	return
+}
+
+/*************************************************/
+var bufferpool = newBufferPool()
+
+type bufferPool struct {
+	pool   [6]sync.Pool
+	router [6]int
+}
+
+func newBufferPool() *bufferPool {
+	p := &bufferPool{}
+	p.pool = [6]sync.Pool{
+		{New: func() any { return bytes.NewBuffer([]byte{}) }},
+		{New: func() any { return bytes.NewBuffer([]byte{}) }},
+		{New: func() any { return bytes.NewBuffer([]byte{}) }},
+		{New: func() any { return bytes.NewBuffer([]byte{}) }},
+		{New: func() any { return bytes.NewBuffer([]byte{}) }},
+		{New: func() any { return bytes.NewBuffer([]byte{}) }},
+	}
+	p.router = [6]int{16, 32, 64, 128, 256, 512}
+	return p
+}
+
+func (this *bufferPool) Get(minsize int) *bytes.Buffer {
+	pre := this.getRouter(minsize)
+	return this.pool[pre].Get().(*bytes.Buffer)
+}
+
+func (this *bufferPool) Put(buf *bytes.Buffer) {
+	if buf != nil {
+		pre := this.getRouter(buf.Cap())
+		buf.Reset()
+		this.pool[pre].Put(buf)
+	}
+}
+
+func (this *bufferPool) getRouter(size int) (pre int) {
+	for i, v := range this.router {
+		if size >= v {
+			pre = i
+			break
+		}
+	}
+	return
+}
+
+/*————————————————————————————————————————————————————————————————————————————*/
+func getBackupDayliFileName(dir, filename string, mode _MODE_TIME, isGzip bool) (bckupfilename string) {
 	timeStr := _yestStr(mode)
 	index := strings.LastIndex(filename, ".")
 	if index <= 0 {
@@ -516,9 +667,16 @@ func getBackupDayliFileName(dir, filename string, mode _MODE_TIME) (bckupfilenam
 	fname := filename[:index]
 	suffix := filename[index:]
 	bckupfilename = fmt.Sprint(fname, "_", timeStr, suffix)
-	if isFileExist(fmt.Sprint(dir, "/", bckupfilename)) {
-		bckupfilename = _getBackupfilename(1, dir, fmt.Sprint(fname, "_", timeStr), suffix)
+	if isGzip {
+		if isFileExist(fmt.Sprint(dir, "/", bckupfilename, ".gz")) {
+			bckupfilename = _getBackupfilename(1, dir, fmt.Sprint(fname, "_", timeStr), suffix, isGzip)
+		}
+	} else {
+		if isFileExist(fmt.Sprint(dir, "/", bckupfilename)) {
+			bckupfilename = _getBackupfilename(1, dir, fmt.Sprint(fname, "_", timeStr), suffix, isGzip)
+		}
 	}
+
 	return
 }
 
@@ -531,7 +689,7 @@ func _getDirList(dir string) ([]os.DirEntry, error) {
 	return f.ReadDir(-1)
 }
 
-func getBackupRollFileName(dir, filename string) (bckupfilename string, er error) {
+func getBackupRollFileName(dir, filename string, isGzip bool) (bckupfilename string, er error) {
 	list, err := _getDirList(dir)
 	if err != nil {
 		er = err
@@ -543,28 +701,44 @@ func getBackupRollFileName(dir, filename string) (bckupfilename string, er error
 	}
 	fname := filename[:index]
 	suffix := filename[index:]
-	length := len(list)
-	bckupfilename = _getBackupfilename(length, dir, fname, suffix)
+	i := 1
+	for _, fd := range list {
+		pattern := fmt.Sprint(`^`, fname, `_[\d]{1,}`, suffix, `$`)
+		if isGzip {
+			pattern = fmt.Sprint(`^`, fname, `_[\d]{1,}`, suffix, `.gz$`)
+		}
+		if _matchString(pattern, fd.Name()) {
+			i++
+		}
+	}
+	bckupfilename = _getBackupfilename(i, dir, fname, suffix, isGzip)
 	return
 }
 
-func _getBackupfilename(count int, dir, filename, suffix string) (bckupfilename string) {
+func _getBackupfilename(count int, dir, filename, suffix string, isGzip bool) (bckupfilename string) {
 	bckupfilename = fmt.Sprint(filename, "_", count, suffix)
-	if isFileExist(fmt.Sprint(dir, "/", bckupfilename)) {
-		return _getBackupfilename(count+1, dir, filename, suffix)
+	if isGzip {
+		if isFileExist(fmt.Sprint(dir, "/", bckupfilename, ".gz")) {
+			return _getBackupfilename(count+1, dir, filename, suffix, isGzip)
+		}
+	} else {
+		if isFileExist(fmt.Sprint(dir, "/", bckupfilename)) {
+			return _getBackupfilename(count+1, dir, filename, suffix, isGzip)
+		}
 	}
 	return
 }
 
-func _write2file(f *os.File, bs []byte) (e error) {
-	_, e = f.Write(bs)
+func _write2file(f *os.File, bs []byte) (n int, e error) {
+	n, e = f.Write(bs)
 	return
 }
 
 func _console(s string, levelname string, flag _FORMAT, calldepth int) {
 	if flag != FORMAT_NANO {
 		buf := getOutBuffer(s, levelname, flag, k1(calldepth))
-		fmt.Print(&buf)
+		fmt.Print(buf)
+		bufferpool.Put(buf)
 	} else {
 		fmt.Println(s)
 	}
@@ -579,8 +753,53 @@ func k1(calldepth int) int {
 	return calldepth + 1
 }
 
-func getOutBuffer(s string, levelname string, flag _FORMAT, calldepth int) (buf bytes.Buffer) {
-	outwriter(&buf, levelname, flag, k1(calldepth), s)
+func getOutBuffer(s string, levelname string, flag _FORMAT, calldepth int) (buf *bytes.Buffer) {
+	buf = bufferpool.Get(len([]byte(s)))
+	outwriter(buf, levelname, flag, k1(calldepth), s)
+	return
+}
+
+func sizeof(vs []interface{}) (_r int) {
+	if vs != nil {
+		for _, v := range vs {
+			switch v.(type) {
+			case string:
+				_r = _r + len([]byte(v.(string)))
+			case bool:
+				_r = _r + 1
+			case int8:
+				_r = _r + 1
+			case int16:
+				_r = _r + 2
+			case int32:
+				_r = _r + 4
+			case int64:
+				_r = _r + 8
+			case int:
+				_r = _r + 8
+			case uint8:
+				_r = _r + 1
+			case uint16:
+				_r = _r + 2
+			case uint32:
+				_r = _r + 4
+			case uint64:
+				_r = _r + 8
+			case float32:
+				_r = _r + 4
+			case float64:
+				_r = _r + 8
+			case []byte:
+				_r = _r + len(v.([]byte))
+			case complex64:
+				_r = _r + 4
+			case complex128:
+				_r = _r + 8
+			default:
+				_r = _r + 8
+			}
+		}
+	}
 	return
 }
 
@@ -608,7 +827,7 @@ func catchError() {
 	}
 }
 
-func _rmOverCountFile(dir, backupfileName string, maxFileNum int) {
+func _rmOverCountFile(dir, backupfileName string, maxFileNum int, isGzip bool) {
 	static_mu.Lock()
 	defer static_mu.Unlock()
 	f, err := os.Open(dir)
@@ -636,7 +855,11 @@ func _rmOverCountFile(dir, backupfileName string, maxFileNum int) {
 	rmfiles := make([]string, 0)
 	i := 0
 	for _, f := range dirs {
-		if len(f.Name()) > len(prefixname) && f.Name()[:len(prefixname)] == prefixname && _matchString("^[0-9]+$", f.Name()[len(prefixname):len(f.Name())-suffixlen]) {
+		checkfname := f.Name()
+		if isGzip && strings.HasSuffix(checkfname, ".gz") {
+			checkfname = checkfname[:len(checkfname)-3]
+		}
+		if len(checkfname) > len(prefixname) && checkfname[:len(prefixname)] == prefixname && _matchString("^[0-9]+$", checkfname[len(prefixname):len(checkfname)-suffixlen]) {
 			finfo, err := f.Info()
 			if err == nil && !finfo.IsDir() {
 				i++
@@ -667,4 +890,22 @@ func _time() time.Time {
 	} else {
 		return time.Now()
 	}
+}
+
+func lgzip(gzfile, gzname, srcfile string) (err error) {
+	var gf *os.File
+	if gf, err = os.Create(gzfile); err == nil {
+		defer gf.Close()
+		var f1 *os.File
+		if f1, err = os.Open(srcfile); err == nil {
+			defer f1.Close()
+			gw := gzip.NewWriter(gf)
+			defer gw.Close()
+			gw.Header.Name = gzname
+			var buf bytes.Buffer
+			io.Copy(&buf, f1)
+			_, err = gw.Write(buf.Bytes())
+		}
+	}
+	return
 }
