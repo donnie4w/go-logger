@@ -1,5 +1,6 @@
 // Copyright (c) , donnie <donnie4w@gmail.com>
 // All rights reserved.
+
 package logger
 
 import (
@@ -8,15 +9,17 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"regexp"
+	"runtime"
 	"runtime/debug"
 	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	bufpool "github.com/donnie4w/gofer/pool/buffer"
 )
 
 const (
@@ -58,19 +61,19 @@ const (
 	FORMAT_NANO       _FORMAT = 0
 
 	/*长文件名(文件绝对路径)及行数*/ /*full file name and line number*/
-	FORMAT_LONGFILENAME = _FORMAT(log.Llongfile)
+	FORMAT_LONGFILENAME = _FORMAT(8)
 
 	/*短文件名及行数*/          /*final file name element and line number*/
-	FORMAT_SHORTFILENAME = _FORMAT(log.Lshortfile)
+	FORMAT_SHORTFILENAME = _FORMAT(16)
 
 	/*日期时间精确到天*/ /*the date in the local time zone: 2009/01/23*/
-	FORMAT_DATE  = _FORMAT(log.Ldate)
+	FORMAT_DATE  = _FORMAT(1)
 
 	/*时间精确到秒*/  /*the time in the local time zone: 01:23:23*/
-	FORMAT_TIME = _FORMAT(log.Ltime)
+	FORMAT_TIME = _FORMAT(2)
 
 	/*时间精确到微秒*/        /*microsecond resolution: 01:23:23.123123.*/
-	FORMAT_MICROSECNDS = _FORMAT(log.Lmicroseconds)
+	FORMAT_MICROSECNDS = _FORMAT(4)
 )
 
 const (
@@ -95,6 +98,8 @@ const (
 	/*日志级别：off 不打印任何日志*/ /*Log level: LEVEL_OFF means none of the logs can be printed*/
 	LEVEL_OFF
 )
+
+var DEBUGNAME, INFONAME, WARNNAME, ERRORNAME, FATALNAME = []byte("[DEBUG]"), []byte("[INFO]"), []byte("[WARN]"), []byte("[ERROR]"), []byte("[FATAL]")
 
 const (
 	_DAYLY _ROLLTYPE = iota
@@ -205,27 +210,28 @@ func _print(_format _FORMAT, level, _default_level _LEVEL, calldepth int, v ...i
 }
 
 func __print(_format _FORMAT, level, _default_level _LEVEL, calldepth int, v ...interface{}) {
-	_console(fmt.Sprint(v...), getlevelname(level, default_format), _format, k1(calldepth))
+	_console(fmt.Append([]byte{}, v...), getlevelname(level, default_format), _format, k1(calldepth))
 }
 
-func getlevelname(level _LEVEL, format _FORMAT) (levelname string) {
+func getlevelname(level _LEVEL, format _FORMAT) (levelname []byte) {
 	if format == FORMAT_NANO {
 		return
 	}
 	switch level {
 	case LEVEL_ALL:
-		levelname = "[ALL]"
+		levelname = []byte("ALL")
 	case LEVEL_DEBUG:
-		levelname = "[DEBUG]"
+		levelname = DEBUGNAME
 	case LEVEL_INFO:
-		levelname = "[INFO]"
+		levelname = INFONAME
 	case LEVEL_WARN:
-		levelname = "[WARN]"
+		levelname = WARNNAME
 	case LEVEL_ERROR:
-		levelname = "[ERROR]"
+		levelname = ERRORNAME
 	case LEVEL_FATAL:
-		levelname = "[FATAL]"
+		levelname = FATALNAME
 	default:
+		levelname = []byte("")
 	}
 	return
 }
@@ -421,14 +427,13 @@ func (this *_logger) println(_level _LEVEL, calldepth int, v ...interface{}) {
 				this._rwLock.RLock()
 				defer this._rwLock.RUnlock()
 				if this._format != FORMAT_NANO {
-					s := fmt.Sprint(v...)
-					buf := getOutBuffer(s, getlevelname(_level, this._format), this._format, k1(calldepth)+1)
+					bs := fmt.Append([]byte{}, v...)
+					buf := getOutBuffer(bs, getlevelname(_level, this._format), this._format, k1(calldepth)+1)
 					this._fileObj.write2file(buf.Bytes())
 					bufferpool.Put(buf)
 				} else {
-					bs := bytepool.Get(sizeof(v))
+					bs := make([]byte, 0)
 					this._fileObj.write2file(fmt.Appendln(bs, v...))
-					bytepool.Put(bs)
 				}
 			}()
 		}
@@ -567,97 +572,8 @@ func _yestStr(mode _MODE_TIME) string {
 	}
 }
 
-/*————————————————————————————————————————————————————————————————————————————*/
-var bytepool = newBytePool()
+var bufferpool = bufpool.NewBufferPool(6)
 
-type bytePool struct {
-	pool   [6]sync.Pool
-	router [6]int
-}
-
-func newBytePool() *bytePool {
-	p := &bytePool{}
-	p.pool = [6]sync.Pool{
-		{New: func() any { return make([]byte, 0) }},
-		{New: func() any { return make([]byte, 0) }},
-		{New: func() any { return make([]byte, 0) }},
-		{New: func() any { return make([]byte, 0) }},
-		{New: func() any { return make([]byte, 0) }},
-		{New: func() any { return make([]byte, 0) }},
-	}
-	p.router = [6]int{8, 32, 64, 128, 256, 512}
-	return p
-}
-
-func (this *bytePool) Get(minsize int) []byte {
-	pre := this.getRouter(minsize)
-	return this.pool[pre].Get().([]byte)
-}
-
-func (this *bytePool) Put(bs []byte) {
-	if bs != nil {
-		pre := this.getRouter(len(bs))
-		bs = bs[:0]
-		this.pool[pre].Put(bs)
-	}
-}
-
-func (this *bytePool) getRouter(size int) (pre int) {
-	for i, v := range this.router {
-		if size >= v {
-			pre = i
-			break
-		}
-	}
-	return
-}
-
-/*************************************************/
-var bufferpool = newBufferPool()
-
-type bufferPool struct {
-	pool   [6]sync.Pool
-	router [6]int
-}
-
-func newBufferPool() *bufferPool {
-	p := &bufferPool{}
-	p.pool = [6]sync.Pool{
-		{New: func() any { return bytes.NewBuffer([]byte{}) }},
-		{New: func() any { return bytes.NewBuffer([]byte{}) }},
-		{New: func() any { return bytes.NewBuffer([]byte{}) }},
-		{New: func() any { return bytes.NewBuffer([]byte{}) }},
-		{New: func() any { return bytes.NewBuffer([]byte{}) }},
-		{New: func() any { return bytes.NewBuffer([]byte{}) }},
-	}
-	p.router = [6]int{16, 32, 64, 128, 256, 512}
-	return p
-}
-
-func (this *bufferPool) Get(minsize int) *bytes.Buffer {
-	pre := this.getRouter(minsize)
-	return this.pool[pre].Get().(*bytes.Buffer)
-}
-
-func (this *bufferPool) Put(buf *bytes.Buffer) {
-	if buf != nil {
-		pre := this.getRouter(buf.Cap())
-		buf.Reset()
-		this.pool[pre].Put(buf)
-	}
-}
-
-func (this *bufferPool) getRouter(size int) (pre int) {
-	for i, v := range this.router {
-		if size >= v {
-			pre = i
-			break
-		}
-	}
-	return
-}
-
-/*————————————————————————————————————————————————————————————————————————————*/
 func getBackupDayliFileName(dir, filename string, mode _MODE_TIME, isGzip bool) (bckupfilename string) {
 	timeStr := _yestStr(mode)
 	index := strings.LastIndex(filename, ".")
@@ -734,72 +650,22 @@ func _write2file(f *os.File, bs []byte) (n int, e error) {
 	return
 }
 
-func _console(s string, levelname string, flag _FORMAT, calldepth int) {
+func _console(s []byte, levelname []byte, flag _FORMAT, calldepth int) {
 	if flag != FORMAT_NANO {
 		buf := getOutBuffer(s, levelname, flag, k1(calldepth))
-		fmt.Print(buf)
+		fmt.Print(string(buf.Bytes()))
 		bufferpool.Put(buf)
 	} else {
-		fmt.Println(s)
+		fmt.Println(string(s))
 	}
-}
-
-func outwriter(out io.Writer, prefix string, flag _FORMAT, calldepth int, s string) {
-	l := log.New(out, prefix, int(flag))
-	l.Output(k1(calldepth), s)
 }
 
 func k1(calldepth int) int {
 	return calldepth + 1
 }
 
-func getOutBuffer(s string, levelname string, flag _FORMAT, calldepth int) (buf *bytes.Buffer) {
-	buf = bufferpool.Get(len([]byte(s)))
-	outwriter(buf, levelname, flag, k1(calldepth), s)
-	return
-}
-
-func sizeof(vs []interface{}) (_r int) {
-	if vs != nil {
-		for _, v := range vs {
-			switch v.(type) {
-			case string:
-				_r = _r + len([]byte(v.(string)))
-			case bool:
-				_r = _r + 1
-			case int8:
-				_r = _r + 1
-			case int16:
-				_r = _r + 2
-			case int32:
-				_r = _r + 4
-			case int64:
-				_r = _r + 8
-			case int:
-				_r = _r + 8
-			case uint8:
-				_r = _r + 1
-			case uint16:
-				_r = _r + 2
-			case uint32:
-				_r = _r + 4
-			case uint64:
-				_r = _r + 8
-			case float32:
-				_r = _r + 4
-			case float64:
-				_r = _r + 8
-			case []byte:
-				_r = _r + len(v.([]byte))
-			case complex64:
-				_r = _r + 4
-			case complex128:
-				_r = _r + 8
-			default:
-				_r = _r + 8
-			}
-		}
-	}
+func getOutBuffer(s []byte, levelname []byte, flag _FORMAT, calldepth int) (buf *bytes.Buffer) {
+	buf = output(flag, k1(calldepth), s, levelname)
 	return
 }
 
@@ -908,4 +774,114 @@ func lgzip(gzfile, gzname, srcfile string) (err error) {
 		}
 	}
 	return
+}
+
+func output(flag _FORMAT, calldepth int, s []byte, levelname []byte) (buf *bytes.Buffer) {
+	now := _time()
+	var file string
+	var line int
+	if flag&(FORMAT_SHORTFILENAME|FORMAT_LONGFILENAME) != 0 {
+		var ok bool
+		_, file, line, ok = runtime.Caller(calldepth)
+		if !ok {
+			file = "???"
+			line = 0
+		}
+	}
+	buf = bufferpool.Get(len(s) + formatHeaderLength(now, file, line, flag, levelname))
+	formatHeader(buf, now, file, line, flag, levelname)
+	buf.Write(s)
+	if len(s) == 0 || s[len(s)-1] != '\n' {
+		buf.WriteByte('\n')
+	}
+	return
+}
+
+func formatHeader(buf *bytes.Buffer, t time.Time, file string, line int, flag _FORMAT, levelname []byte) {
+	buf.Write(levelname)
+	if flag&(FORMAT_DATE|FORMAT_TIME|FORMAT_MICROSECNDS) != 0 {
+		if flag&FORMAT_DATE != 0 {
+			year, month, day := t.Date()
+			itoa(buf, year, 4)
+			buf.WriteByte('/')
+			itoa(buf, int(month), 2)
+			buf.WriteByte('/')
+			itoa(buf, day, 2)
+			buf.WriteByte(' ')
+		}
+		if flag&(FORMAT_TIME|FORMAT_MICROSECNDS) != 0 {
+			hour, min, sec := t.Clock()
+			itoa(buf, hour, 2)
+			buf.WriteByte(':')
+			itoa(buf, min, 2)
+			buf.WriteByte(':')
+			itoa(buf, sec, 2)
+			if flag&FORMAT_MICROSECNDS != 0 {
+				buf.WriteByte('.')
+				itoa(buf, t.Nanosecond()/1e3, 6)
+			}
+			buf.WriteByte(' ')
+		}
+	}
+	if flag&(FORMAT_SHORTFILENAME|FORMAT_LONGFILENAME) != 0 {
+		if flag&FORMAT_SHORTFILENAME != 0 {
+			short := file
+			for i := len(file) - 1; i > 0; i-- {
+				if file[i] == '/' {
+					short = file[i+1:]
+					break
+				}
+			}
+			file = short
+		}
+		buf.Write([]byte(file))
+		buf.WriteByte(':')
+		itoa(buf, line, -1)
+		buf.WriteByte(':')
+		buf.WriteByte(' ')
+	}
+}
+
+func formatHeaderLength(t time.Time, file string, line int, flag _FORMAT, levelname []byte) (i int) {
+	i += len(levelname)
+	if flag&(FORMAT_DATE|FORMAT_TIME|FORMAT_MICROSECNDS) != 0 {
+		if flag&FORMAT_DATE != 0 {
+			i += 11
+		}
+		if flag&(FORMAT_TIME|FORMAT_MICROSECNDS) != 0 {
+			i += 8
+			if flag&FORMAT_MICROSECNDS != 0 {
+				i += 7
+			}
+			i += 1
+		}
+	}
+	if flag&(FORMAT_SHORTFILENAME|FORMAT_LONGFILENAME) != 0 {
+		if flag&FORMAT_SHORTFILENAME != 0 {
+			for k := len(file) - 1; k > 0; k-- {
+				if file[k] == '/' {
+					i += len(file) - k
+					break
+				}
+			}
+		} else {
+			i += len(file)
+		}
+		i += 4
+	}
+	return
+}
+
+func itoa(buf *bytes.Buffer, i int, wid int) {
+	var b [20]byte
+	bp := len(b) - 1
+	for i >= 10 || wid > 1 {
+		wid--
+		q := i / 10
+		b[bp] = byte('0' + i - q*10)
+		bp--
+		i = q
+	}
+	b[bp] = byte('0' + i)
+	buf.Write(b[bp:])
 }
