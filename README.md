@@ -14,12 +14,12 @@
 
 ##### 不调用SetFormat()时，使用默认格式
 
-	不格式化，只打印日志内容	FORMAT_NANO	无格式
+	不格式化，只打印日志内容		FORMAT_NANO		无格式
 	长文件名及行数			FORMAT_LONGFILENAME	全路径
 	短文件名及行数			FORMAT_SHORTFILENAME	如：logging_test.go:10
 	精确到日期			FORMAT_DATE		如：2023/02/14
 	精确到秒				FORMAT_TIME		如：01:33:27
-	精确到微秒			FORMAT_MICROSECNDS
+	精确到微秒			FORMAT_MICROSECNDS	如：01:33:27.123456
 
 ##### 打印结果形如：
 
