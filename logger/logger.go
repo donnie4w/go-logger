@@ -38,7 +38,7 @@ const _DATEFORMAT_MONTH = "200601"
 
 var static_mu *sync.Mutex = new(sync.Mutex)
 
-var static_lo *_logger = NewLogger()
+var static_lo *Logging = NewLogger()
 
 var TIME_DEVIATION time.Duration
 
@@ -110,26 +110,26 @@ var default_format _FORMAT = FORMAT_SHORTFILENAME | FORMAT_DATE | FORMAT_TIME
 var default_level = LEVEL_ALL
 
 /*设置打印格式*/
-func SetFormat(format _FORMAT) *_logger {
+func SetFormat(format _FORMAT) *Logging {
 	default_format = format
 	return static_lo.SetFormat(format)
 }
 
 /*设置控制台日志级别，默认ALL*/
 // Setting the log Level
-func SetLevel(level _LEVEL) *_logger {
+func SetLevel(level _LEVEL) *Logging {
 	default_level = level
 	return static_lo.SetLevel(level)
 }
 
 // print logs on the console or not. default true
-func SetConsole(on bool) *_logger {
+func SetConsole(on bool) *Logging {
 	return static_lo.SetConsole(on)
 
 }
 
 /*获得全局Logger对象*/ /*return the default log object*/
-func GetStaticLogger() *_logger {
+func GetStaticLogger() *Logging {
 	return _staticLogger()
 }
 
@@ -139,7 +139,7 @@ func GetStaticLogger() *_logger {
 //   - fileName  : log file name
 //   - maxFileSize :  maximum size of a log file
 //   - unit		   :  size unit :  KB,MB,GB,TB
-func SetRollingFile(fileDir, fileName string, maxFileSize int64, unit _UNIT) (l *_logger, err error) {
+func SetRollingFile(fileDir, fileName string, maxFileSize int64, unit _UNIT) (l *Logging, err error) {
 	return SetRollingFileLoop(fileDir, fileName, maxFileSize, unit, 0)
 }
 
@@ -147,57 +147,57 @@ func SetRollingFile(fileDir, fileName string, maxFileSize int64, unit _UNIT) (l 
 // Parameters:
 //   - fileDir   :directory where log files are stored, If it is the current directory, you also can set it to ""
 //   - fileName  : log file name
-func SetRollingDaily(fileDir, fileName string) (l *_logger, err error) {
+func SetRollingDaily(fileDir, fileName string) (l *Logging, err error) {
 	return SetRollingByTime(fileDir, fileName, MODE_DAY)
 }
 
 // like SetRollingFile,but only keep (maxFileNum) current files
 // - maxFileNum : the number of files that are retained
-func SetRollingFileLoop(fileDir, fileName string, maxFileSize int64, unit _UNIT, maxFileNum int) (l *_logger, err error) {
+func SetRollingFileLoop(fileDir, fileName string, maxFileSize int64, unit _UNIT, maxFileNum int) (l *Logging, err error) {
 	return static_lo.SetRollingFileLoop(fileDir, fileName, maxFileSize, unit, maxFileNum)
 }
 
 // like SetRollingDaily,but supporte hourly backup ,dayly backup and monthly backup
 // mode : 	MODE_HOUR    MODE_DAY   MODE_MONTH
-func SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (l *_logger, err error) {
+func SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (l *Logging, err error) {
 	return static_lo.SetRollingByTime(fileDir, fileName, mode)
 }
 
 // when set true, the specified backup file of both SetRollingFile and SetRollingFileLoop will be save as a compressed file
-func SetGzipOn(is bool) (l *_logger) {
+func SetGzipOn(is bool) (l *Logging) {
 	return static_lo.SetGzipOn(is)
 }
 
-func _staticLogger() *_logger {
+func _staticLogger() *Logging {
 	return static_lo
 }
 
 // Logs are printed at the DEBUG level
-func Debug(v ...interface{}) *_logger {
+func Debug(v ...interface{}) *Logging {
 	_print(default_format, LEVEL_DEBUG, default_level, 2, v...)
 	return _staticLogger()
 }
 
 // Logs are printed at the INFO level
-func Info(v ...interface{}) *_logger {
+func Info(v ...interface{}) *Logging {
 	_print(default_format, LEVEL_INFO, default_level, 2, v...)
 	return _staticLogger()
 }
 
 // Logs are printed at the WARN level
-func Warn(v ...interface{}) *_logger {
+func Warn(v ...interface{}) *Logging {
 	_print(default_format, LEVEL_WARN, default_level, 2, v...)
 	return _staticLogger()
 }
 
 // Logs are printed at the ERROR level
-func Error(v ...interface{}) *_logger {
+func Error(v ...interface{}) *Logging {
 	_print(default_format, LEVEL_ERROR, default_level, 2, v...)
 	return _staticLogger()
 }
 
 // Logs are printed at the FATAL level
-func Fatal(v ...interface{}) *_logger {
+func Fatal(v ...interface{}) *Logging {
 	_print(default_format, LEVEL_FATAL, default_level, 2, v...)
 	return _staticLogger()
 }
@@ -237,7 +237,7 @@ func getlevelname(level _LEVEL, format _FORMAT) (levelname []byte) {
 }
 
 /*————————————————————————————————————————————————————————————————————————————*/
-type _logger struct {
+type Logging struct {
 	_level      _LEVEL
 	_format     _FORMAT
 	_rwLock     *sync.RWMutex
@@ -255,39 +255,39 @@ type _logger struct {
 }
 
 // return a new log object
-func NewLogger() (log *_logger) {
-	log = &_logger{_level: LEVEL_DEBUG, _rolltype: _DAYLY, _rwLock: new(sync.RWMutex), _format: FORMAT_SHORTFILENAME | FORMAT_DATE | FORMAT_TIME, _isConsole: true}
+func NewLogger() (log *Logging) {
+	log = &Logging{_level: LEVEL_DEBUG, _rolltype: _DAYLY, _rwLock: new(sync.RWMutex), _format: FORMAT_SHORTFILENAME | FORMAT_DATE | FORMAT_TIME, _isConsole: true}
 	log.newfileObj()
 	return
 }
 
 // 控制台日志是否打开
-func (this *_logger) SetConsole(_isConsole bool) *_logger {
+func (this *Logging) SetConsole(_isConsole bool) *Logging {
 	this._isConsole = _isConsole
 	return this
 }
-func (this *_logger) Debug(v ...interface{}) *_logger {
+func (this *Logging) Debug(v ...interface{}) *Logging {
 	this.println(LEVEL_DEBUG, 2, v...)
 	return this
 }
-func (this *_logger) Info(v ...interface{}) *_logger {
+func (this *Logging) Info(v ...interface{}) *Logging {
 	this.println(LEVEL_INFO, 2, v...)
 	return this
 }
-func (this *_logger) Warn(v ...interface{}) *_logger {
+func (this *Logging) Warn(v ...interface{}) *Logging {
 	this.println(LEVEL_WARN, 2, v...)
 	return this
 }
-func (this *_logger) Error(v ...interface{}) *_logger {
+func (this *Logging) Error(v ...interface{}) *Logging {
 	this.println(LEVEL_ERROR, 2, v...)
 	return this
 }
-func (this *_logger) Fatal(v ...interface{}) *_logger {
+func (this *Logging) Fatal(v ...interface{}) *Logging {
 	this.println(LEVEL_FATAL, 2, v...)
 	return this
 }
 
-func (this *_logger) Write(bs []byte) (err error, bakfn string) {
+func (this *Logging) Write(bs []byte) (err error, bakfn string) {
 	if this._fileObj._isFileWell {
 		var openFileErr error
 		if this._fileObj.isMustBackUp() {
@@ -303,11 +303,11 @@ func (this *_logger) Write(bs []byte) (err error, bakfn string) {
 	return
 }
 
-func (this *_logger) SetFormat(format _FORMAT) *_logger {
+func (this *Logging) SetFormat(format _FORMAT) *Logging {
 	this._format = format
 	return this
 }
-func (this *_logger) SetLevel(level _LEVEL) *_logger {
+func (this *Logging) SetLevel(level _LEVEL) *Logging {
 	this._level = level
 	return this
 }
@@ -319,7 +319,7 @@ fileName 日志文件名
 maxFileSize  日志文件大小最大值
 unit    日志文件大小单位
 */
-func (this *_logger) SetRollingFile(fileDir, fileName string, maxFileSize int64, unit _UNIT) (l *_logger, err error) {
+func (this *Logging) SetRollingFile(fileDir, fileName string, maxFileSize int64, unit _UNIT) (l *Logging, err error) {
 	return this.SetRollingFileLoop(fileDir, fileName, maxFileSize, unit, 0)
 }
 
@@ -331,7 +331,7 @@ maxFileSize  日志文件大小最大值
 unit    	日志文件大小单位
 maxFileNum  留的日志文件数
 */
-func (this *_logger) SetRollingFileLoop(fileDir, fileName string, maxFileSize int64, unit _UNIT, maxFileNum int) (l *_logger, err error) {
+func (this *Logging) SetRollingFileLoop(fileDir, fileName string, maxFileSize int64, unit _UNIT, maxFileNum int) (l *Logging, err error) {
 	if fileDir == "" {
 		fileDir, _ = os.Getwd()
 	}
@@ -353,7 +353,7 @@ func (this *_logger) SetRollingFileLoop(fileDir, fileName string, maxFileSize in
 fileDir 日志文件夹路径
 fileName 日志文件名
 */
-func (this *_logger) SetRollingDaily(fileDir, fileName string) (l *_logger, err error) {
+func (this *Logging) SetRollingDaily(fileDir, fileName string) (l *Logging, err error) {
 	return this.SetRollingByTime(fileDir, fileName, MODE_DAY)
 }
 
@@ -363,7 +363,7 @@ fileDir 日志文件夹路径
 fileName 日志文件名
 mode   指定 小时，天，月
 */
-func (this *_logger) SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (l *_logger, err error) {
+func (this *Logging) SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (l *Logging, err error) {
 	if fileDir == "" {
 		fileDir, _ = os.Getwd()
 	}
@@ -377,7 +377,7 @@ func (this *_logger) SetRollingByTime(fileDir, fileName string, mode _MODE_TIME)
 	return this, err
 }
 
-func (this *_logger) SetGzipOn(is bool) *_logger {
+func (this *Logging) SetGzipOn(is bool) *Logging {
 	this._gzip = is
 	if this._fileObj != nil {
 		this._fileObj._gzip = is
@@ -385,12 +385,12 @@ func (this *_logger) SetGzipOn(is bool) *_logger {
 	return this
 }
 
-func (this *_logger) newfileObj() {
+func (this *Logging) newfileObj() {
 	this._fileObj = new(fileObj)
 	this._fileObj._fileDir, this._fileObj._fileName, this._fileObj._maxSize, this._fileObj._rolltype, this._fileObj._unit, this._fileObj._maxFileNum, this._fileObj._mode, this._fileObj._gzip = this._fileDir, this._fileName, this._maxSize, this._rolltype, this._unit, this._maxFileNum, this._mode, this._gzip
 }
 
-func (this *_logger) backUp() (err, openFileErr error, bakfn string) {
+func (this *Logging) backUp() (err, openFileErr error, bakfn string) {
 	this._rwLock.Lock()
 	defer this._rwLock.Unlock()
 	if !this._fileObj.isMustBackUp() {
@@ -413,7 +413,7 @@ func (this *_logger) backUp() (err, openFileErr error, bakfn string) {
 	return
 }
 
-func (this *_logger) println(_level _LEVEL, calldepth int, v ...interface{}) {
+func (this *Logging) println(_level _LEVEL, calldepth int, v ...interface{}) {
 	if this._level > _level {
 		return
 	}
