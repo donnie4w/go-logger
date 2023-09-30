@@ -19,11 +19,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	bufpool "github.com/donnie4w/gofer/pool/buffer"
+	. "github.com/donnie4w/gofer/buffer"
+	. "github.com/donnie4w/gofer/hashmap"
 )
 
 const (
-	_VER string = "2.0.2"
+	_VER string = "2.0.3"
 )
 
 type _LEVEL int8
@@ -424,13 +425,15 @@ func (this *Logging) println(_level _LEVEL, calldepth int, v ...interface{}) {
 		}
 		if openFileErr == nil {
 			func() {
-				this._rwLock.RLock()
-				defer this._rwLock.RUnlock()
 				if this._format != FORMAT_NANO {
 					bs := fmt.Append([]byte{}, v...)
 					buf := getOutBuffer(bs, getlevelname(_level, this._format), this._format, k1(calldepth)+1)
+					this._rwLock.RLock()
+					defer this._rwLock.RUnlock()
 					this._fileObj.write2file(buf.Bytes())
-					bufferpool.Put(buf)
+					if buf.Len() < 1<<14 {
+						buf.Free()
+					}
 				} else {
 					bs := make([]byte, 0)
 					this._fileObj.write2file(fmt.Appendln(bs, v...))
@@ -572,8 +575,6 @@ func _yestStr(mode _MODE_TIME) string {
 	}
 }
 
-var bufferpool = bufpool.NewBufferPool(6)
-
 func getBackupDayliFileName(dir, filename string, mode _MODE_TIME, isGzip bool) (bckupfilename string) {
 	timeStr := _yestStr(mode)
 	index := strings.LastIndex(filename, ".")
@@ -654,7 +655,9 @@ func _console(s []byte, levelname []byte, flag _FORMAT, calldepth int) {
 	if flag != FORMAT_NANO {
 		buf := getOutBuffer(s, levelname, flag, k1(calldepth))
 		fmt.Print(string(buf.Bytes()))
-		bufferpool.Put(buf)
+		if buf.Len() < 1<<14 {
+			buf.Free()
+		}
 	} else {
 		fmt.Println(string(s))
 	}
@@ -664,7 +667,7 @@ func k1(calldepth int) int {
 	return calldepth + 1
 }
 
-func getOutBuffer(s []byte, levelname []byte, flag _FORMAT, calldepth int) (buf *bytes.Buffer) {
+func getOutBuffer(s []byte, levelname []byte, flag _FORMAT, calldepth int) (buf *Buffer) {
 	buf = output(flag, k1(calldepth), s, levelname)
 	return
 }
@@ -776,19 +779,25 @@ func lgzip(gzfile, gzname, srcfile string) (err error) {
 	return
 }
 
-func output(flag _FORMAT, calldepth int, s []byte, levelname []byte) (buf *bytes.Buffer) {
+var m = NewLimitMap[any, runtime.Frame](1 << 13)
+
+func output(flag _FORMAT, calldepth int, s []byte, levelname []byte) (buf *Buffer) {
 	now := _time()
-	var file string
-	var line int
+	var file *string
+	var line *int
 	if flag&(FORMAT_SHORTFILENAME|FORMAT_LONGFILENAME) != 0 {
+		var pcs [1]uintptr
+		runtime.Callers(calldepth+1, pcs[:])
+		var f runtime.Frame
 		var ok bool
-		_, file, line, ok = runtime.Caller(calldepth)
-		if !ok {
-			file = "???"
-			line = 0
+		if f, ok = m.Get(pcs); !ok {
+			f, _ = runtime.CallersFrames([]uintptr{pcs[0]}).Next()
+			m.Put(pcs, f)
 		}
+		file = &f.File
+		line = &f.Line
 	}
-	buf = bufferpool.Get(len(s) + formatHeaderLength(now, file, line, flag, levelname))
+	buf = NewBufferByPool()
 	formatHeader(buf, now, file, line, flag, levelname)
 	buf.Write(s)
 	if len(s) == 0 || s[len(s)-1] != '\n' {
@@ -797,7 +806,7 @@ func output(flag _FORMAT, calldepth int, s []byte, levelname []byte) (buf *bytes
 	return
 }
 
-func formatHeader(buf *bytes.Buffer, t time.Time, file string, line int, flag _FORMAT, levelname []byte) {
+func formatHeader(buf *Buffer, t time.Time, file *string, line *int, flag _FORMAT, levelname []byte) {
 	buf.Write(levelname)
 	if flag&(FORMAT_DATE|FORMAT_TIME|FORMAT_MICROSECNDS) != 0 {
 		if flag&FORMAT_DATE != 0 {
@@ -825,18 +834,18 @@ func formatHeader(buf *bytes.Buffer, t time.Time, file string, line int, flag _F
 	}
 	if flag&(FORMAT_SHORTFILENAME|FORMAT_LONGFILENAME) != 0 {
 		if flag&FORMAT_SHORTFILENAME != 0 {
-			short := file
-			for i := len(file) - 1; i > 0; i-- {
-				if file[i] == '/' {
-					short = file[i+1:]
+			short := *file
+			for i := len(*file) - 1; i > 0; i-- {
+				if (*file)[i] == '/' {
+					short = (*file)[i+1:]
 					break
 				}
 			}
-			file = short
+			file = &short
 		}
-		buf.Write([]byte(file))
+		buf.Write([]byte(*file))
 		buf.WriteByte(':')
-		itoa(buf, line, -1)
+		itoa(buf, *line, -1)
 		buf.WriteByte(':')
 		buf.WriteByte(' ')
 	}
@@ -872,7 +881,7 @@ func formatHeaderLength(t time.Time, file string, line int, flag _FORMAT, leveln
 	return
 }
 
-func itoa(buf *bytes.Buffer, i int, wid int) {
+func itoa(buf *Buffer, i int, wid int) {
 	var b [20]byte
 	bp := len(b) - 1
 	for i >= 10 || wid > 1 {
