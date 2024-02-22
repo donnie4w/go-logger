@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	_VER string = "2.0.3"
+	_VER string = "0.23.0"
 )
 
 type _LEVEL int8
@@ -242,7 +242,6 @@ type Logging struct {
 	_level      _LEVEL
 	_format     _FORMAT
 	_rwLock     *sync.RWMutex
-	_safe       bool
 	_fileDir    string
 	_fileName   string
 	_maxSize    int64
@@ -263,54 +262,54 @@ func NewLogger() (log *Logging) {
 }
 
 // 控制台日志是否打开
-func (this *Logging) SetConsole(_isConsole bool) *Logging {
-	this._isConsole = _isConsole
-	return this
+func (t *Logging) SetConsole(_isConsole bool) *Logging {
+	t._isConsole = _isConsole
+	return t
 }
-func (this *Logging) Debug(v ...interface{}) *Logging {
-	this.println(LEVEL_DEBUG, 2, v...)
-	return this
+func (t *Logging) Debug(v ...interface{}) *Logging {
+	t.println(LEVEL_DEBUG, 2, v...)
+	return t
 }
-func (this *Logging) Info(v ...interface{}) *Logging {
-	this.println(LEVEL_INFO, 2, v...)
-	return this
+func (t *Logging) Info(v ...interface{}) *Logging {
+	t.println(LEVEL_INFO, 2, v...)
+	return t
 }
-func (this *Logging) Warn(v ...interface{}) *Logging {
-	this.println(LEVEL_WARN, 2, v...)
-	return this
+func (t *Logging) Warn(v ...interface{}) *Logging {
+	t.println(LEVEL_WARN, 2, v...)
+	return t
 }
-func (this *Logging) Error(v ...interface{}) *Logging {
-	this.println(LEVEL_ERROR, 2, v...)
-	return this
+func (t *Logging) Error(v ...interface{}) *Logging {
+	t.println(LEVEL_ERROR, 2, v...)
+	return t
 }
-func (this *Logging) Fatal(v ...interface{}) *Logging {
-	this.println(LEVEL_FATAL, 2, v...)
-	return this
+func (t *Logging) Fatal(v ...interface{}) *Logging {
+	t.println(LEVEL_FATAL, 2, v...)
+	return t
 }
 
-func (this *Logging) Write(bs []byte) (err error, bakfn string) {
-	if this._fileObj._isFileWell {
+func (t *Logging) Write(bs []byte) (bakfn string, err error) {
+	if t._fileObj._isFileWell {
 		var openFileErr error
-		if this._fileObj.isMustBackUp() {
-			err, openFileErr, bakfn = this.backUp()
+		if t._fileObj.isMustBackUp() {
+			bakfn, err, openFileErr = t.backUp()
 		}
 		if openFileErr == nil {
-			this._rwLock.RLock()
-			defer this._rwLock.RUnlock()
-			_, err = this._fileObj.write2file(bs)
+			t._rwLock.RLock()
+			defer t._rwLock.RUnlock()
+			_, err = t._fileObj.write2file(bs)
 			return
 		}
 	}
 	return
 }
 
-func (this *Logging) SetFormat(format _FORMAT) *Logging {
-	this._format = format
-	return this
+func (t *Logging) SetFormat(format _FORMAT) *Logging {
+	t._format = format
+	return t
 }
-func (this *Logging) SetLevel(level _LEVEL) *Logging {
-	this._level = level
-	return this
+func (t *Logging) SetLevel(level _LEVEL) *Logging {
+	t._level = level
+	return t
 }
 
 /*
@@ -320,8 +319,8 @@ fileName 日志文件名
 maxFileSize  日志文件大小最大值
 unit    日志文件大小单位
 */
-func (this *Logging) SetRollingFile(fileDir, fileName string, maxFileSize int64, unit _UNIT) (l *Logging, err error) {
-	return this.SetRollingFileLoop(fileDir, fileName, maxFileSize, unit, 0)
+func (t *Logging) SetRollingFile(fileDir, fileName string, maxFileSize int64, unit _UNIT) (l *Logging, err error) {
+	return t.SetRollingFileLoop(fileDir, fileName, maxFileSize, unit, 0)
 }
 
 /*
@@ -332,21 +331,21 @@ maxFileSize  日志文件大小最大值
 unit    	日志文件大小单位
 maxFileNum  留的日志文件数
 */
-func (this *Logging) SetRollingFileLoop(fileDir, fileName string, maxFileSize int64, unit _UNIT, maxFileNum int) (l *Logging, err error) {
+func (t *Logging) SetRollingFileLoop(fileDir, fileName string, maxFileSize int64, unit _UNIT, maxFileNum int) (l *Logging, err error) {
 	if fileDir == "" {
 		fileDir, _ = os.Getwd()
 	}
 	if maxFileNum > 0 {
 		maxFileNum--
 	}
-	this._fileDir, this._fileName, this._maxSize, this._maxFileNum, this._unit = fileDir, fileName, maxFileSize, maxFileNum, unit
-	this._rolltype = _ROLLFILE
-	if this._fileObj != nil {
-		this._fileObj.close()
+	t._fileDir, t._fileName, t._maxSize, t._maxFileNum, t._unit = fileDir, fileName, maxFileSize, maxFileNum, unit
+	t._rolltype = _ROLLFILE
+	if t._fileObj != nil {
+		t._fileObj.close()
 	}
-	this.newfileObj()
-	err = this._fileObj.openFileHandler()
-	return this, err
+	t.newfileObj()
+	err = t._fileObj.openFileHandler()
+	return t, err
 }
 
 /*
@@ -354,8 +353,8 @@ func (this *Logging) SetRollingFileLoop(fileDir, fileName string, maxFileSize in
 fileDir 日志文件夹路径
 fileName 日志文件名
 */
-func (this *Logging) SetRollingDaily(fileDir, fileName string) (l *Logging, err error) {
-	return this.SetRollingByTime(fileDir, fileName, MODE_DAY)
+func (t *Logging) SetRollingDaily(fileDir, fileName string) (l *Logging, err error) {
+	return t.SetRollingByTime(fileDir, fileName, MODE_DAY)
 }
 
 /*
@@ -364,85 +363,83 @@ fileDir 日志文件夹路径
 fileName 日志文件名
 mode   指定 小时，天，月
 */
-func (this *Logging) SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (l *Logging, err error) {
+func (t *Logging) SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (l *Logging, err error) {
 	if fileDir == "" {
 		fileDir, _ = os.Getwd()
 	}
-	this._fileDir, this._fileName, this._mode = fileDir, fileName, mode
-	this._rolltype = _DAYLY
-	if this._fileObj != nil {
-		this._fileObj.close()
+	t._fileDir, t._fileName, t._mode = fileDir, fileName, mode
+	t._rolltype = _DAYLY
+	if t._fileObj != nil {
+		t._fileObj.close()
 	}
-	this.newfileObj()
-	err = this._fileObj.openFileHandler()
-	return this, err
+	t.newfileObj()
+	err = t._fileObj.openFileHandler()
+	return t, err
 }
 
-func (this *Logging) SetGzipOn(is bool) *Logging {
-	this._gzip = is
-	if this._fileObj != nil {
-		this._fileObj._gzip = is
+func (t *Logging) SetGzipOn(is bool) *Logging {
+	t._gzip = is
+	if t._fileObj != nil {
+		t._fileObj._gzip = is
 	}
-	return this
+	return t
 }
 
-func (this *Logging) newfileObj() {
-	this._fileObj = new(fileObj)
-	this._fileObj._fileDir, this._fileObj._fileName, this._fileObj._maxSize, this._fileObj._rolltype, this._fileObj._unit, this._fileObj._maxFileNum, this._fileObj._mode, this._fileObj._gzip = this._fileDir, this._fileName, this._maxSize, this._rolltype, this._unit, this._maxFileNum, this._mode, this._gzip
+func (t *Logging) newfileObj() {
+	t._fileObj = new(fileObj)
+	t._fileObj._fileDir, t._fileObj._fileName, t._fileObj._maxSize, t._fileObj._rolltype, t._fileObj._unit, t._fileObj._maxFileNum, t._fileObj._mode, t._fileObj._gzip = t._fileDir, t._fileName, t._maxSize, t._rolltype, t._unit, t._maxFileNum, t._mode, t._gzip
 }
 
-func (this *Logging) backUp() (err, openFileErr error, bakfn string) {
-	this._rwLock.Lock()
-	defer this._rwLock.Unlock()
-	if !this._fileObj.isMustBackUp() {
+func (t *Logging) backUp() (bakfn string, err, openFileErr error) {
+	t._rwLock.Lock()
+	defer t._rwLock.Unlock()
+	if !t._fileObj.isMustBackUp() {
 		return
 	}
-	err = this._fileObj.close()
+	err = t._fileObj.close()
 	if err != nil {
-		__print(this._format, LEVEL_ERROR, LEVEL_ERROR, 1, err.Error())
+		__print(t._format, LEVEL_ERROR, LEVEL_ERROR, 1, err.Error())
 		return
 	}
-	err, bakfn = this._fileObj.rename()
+	bakfn, err = t._fileObj.rename()
 	if err != nil {
-		__print(this._format, LEVEL_ERROR, LEVEL_ERROR, 1, err.Error())
+		__print(t._format, LEVEL_ERROR, LEVEL_ERROR, 1, err.Error())
 		return
 	}
-	openFileErr = this._fileObj.openFileHandler()
+	openFileErr = t._fileObj.openFileHandler()
 	if openFileErr != nil {
-		__print(this._format, LEVEL_ERROR, LEVEL_ERROR, 1, openFileErr.Error())
+		__print(t._format, LEVEL_ERROR, LEVEL_ERROR, 1, openFileErr.Error())
 	}
 	return
 }
 
-func (this *Logging) println(_level _LEVEL, calldepth int, v ...interface{}) {
-	if this._level > _level {
+func (t *Logging) println(_level _LEVEL, calldepth int, v ...interface{}) {
+	if t._level > _level {
 		return
 	}
-	if this._fileObj._isFileWell {
+	if t._fileObj._isFileWell {
 		var openFileErr error
-		if this._fileObj.isMustBackUp() {
-			_, openFileErr, _ = this.backUp()
+		if t._fileObj.isMustBackUp() {
+			_, openFileErr, _ = t.backUp()
 		}
 		if openFileErr == nil {
 			func() {
-				if this._format != FORMAT_NANO {
+				if t._format != FORMAT_NANO {
 					bs := fmt.Append([]byte{}, v...)
-					buf := getOutBuffer(bs, getlevelname(_level, this._format), this._format, k1(calldepth)+1)
-					this._rwLock.RLock()
-					defer this._rwLock.RUnlock()
-					this._fileObj.write2file(buf.Bytes())
-					if buf.Len() < 1<<14 {
-						buf.Free()
-					}
+					buf := getOutBuffer(bs, getlevelname(_level, t._format), t._format, k1(calldepth)+1)
+					t._rwLock.RLock()
+					defer t._rwLock.RUnlock()
+					t._fileObj.write2file(buf.Bytes())
+					buf.Free()
 				} else {
 					bs := make([]byte, 0)
-					this._fileObj.write2file(fmt.Appendln(bs, v...))
+					t._fileObj.write2file(fmt.Appendln(bs, v...))
 				}
 			}()
 		}
 	}
-	if this._isConsole {
-		__print(this._format, _level, this._level, k1(calldepth), v...)
+	if t._isConsole {
+		__print(t._format, _level, t._level, k1(calldepth), v...)
 	}
 }
 
@@ -462,87 +459,87 @@ type fileObj struct {
 	_gzip        bool
 }
 
-func (this *fileObj) openFileHandler() (e error) {
-	if this._fileDir == "" || this._fileName == "" {
+func (t *fileObj) openFileHandler() (e error) {
+	if t._fileDir == "" || t._fileName == "" {
 		e = errors.New("log filePath is null or error")
 		return
 	}
-	e = mkdirDir(this._fileDir)
+	e = mkdirDir(t._fileDir)
 	if e != nil {
-		this._isFileWell = false
+		t._isFileWell = false
 		return
 	}
-	fname := fmt.Sprint(this._fileDir, "/", this._fileName)
-	this._fileHandler, e = os.OpenFile(fname, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+	fname := fmt.Sprint(t._fileDir, "/", t._fileName)
+	t._fileHandler, e = os.OpenFile(fname, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 	if e != nil {
 		__print(default_format, LEVEL_ERROR, LEVEL_ERROR, 1, e.Error())
-		this._isFileWell = false
+		t._isFileWell = false
 		return
 	}
-	this._isFileWell = true
-	this._tomorSecond = tomorSecond(this._mode)
-	if fs, err := this._fileHandler.Stat(); err == nil {
-		this._fileSize = fs.Size()
+	t._isFileWell = true
+	t._tomorSecond = tomorSecond(t._mode)
+	if fs, err := t._fileHandler.Stat(); err == nil {
+		t._fileSize = fs.Size()
 	} else {
 		e = err
 	}
 	return
 }
 
-func (this *fileObj) addFileSize(size int64) {
-	atomic.AddInt64(&this._fileSize, size)
+func (t *fileObj) addFileSize(size int64) {
+	atomic.AddInt64(&t._fileSize, size)
 }
 
-func (this *fileObj) write2file(bs []byte) (n int, e error) {
+func (t *fileObj) write2file(bs []byte) (n int, e error) {
 	defer catchError()
 	if bs != nil {
-		if n, e = _write2file(this._fileHandler, bs); e == nil {
-			this.addFileSize(int64(n))
+		if n, e = _write2file(t._fileHandler, bs); e == nil {
+			t.addFileSize(int64(n))
 		}
 	}
 	return
 }
 
-func (this *fileObj) isMustBackUp() bool {
-	switch this._rolltype {
+func (t *fileObj) isMustBackUp() bool {
+	switch t._rolltype {
 	case _DAYLY:
-		if _time().Unix() >= this._tomorSecond {
+		if _time().Unix() >= t._tomorSecond {
 			return true
 		}
 	case _ROLLFILE:
-		return this._fileSize > 0 && this._fileSize >= this._maxSize*int64(this._unit)
+		return t._fileSize > 0 && t._fileSize >= t._maxSize*int64(t._unit)
 	}
 	return false
 }
 
-func (this *fileObj) rename() (err error, bckupfilename string) {
-	if this._rolltype == _DAYLY {
-		bckupfilename = getBackupDayliFileName(this._fileDir, this._fileName, this._mode, this._gzip)
+func (t *fileObj) rename() (bckupfilename string, err error) {
+	if t._rolltype == _DAYLY {
+		bckupfilename = getBackupDayliFileName(t._fileDir, t._fileName, t._mode, t._gzip)
 	} else {
-		bckupfilename, err = getBackupRollFileName(this._fileDir, this._fileName, this._gzip)
+		bckupfilename, err = getBackupRollFileName(t._fileDir, t._fileName, t._gzip)
 	}
 	if bckupfilename != "" && err == nil {
-		oldPath := fmt.Sprint(this._fileDir, "/", this._fileName)
-		newPath := fmt.Sprint(this._fileDir, "/", bckupfilename)
+		oldPath := fmt.Sprint(t._fileDir, "/", t._fileName)
+		newPath := fmt.Sprint(t._fileDir, "/", bckupfilename)
 		err = os.Rename(oldPath, newPath)
 		go func() {
-			if err == nil && this._gzip {
+			if err == nil && t._gzip {
 				if err = lgzip(fmt.Sprint(newPath, ".gz"), bckupfilename, newPath); err == nil {
 					os.Remove(newPath)
 				}
 			}
-			if err == nil && this._rolltype == _ROLLFILE && this._maxFileNum > 0 {
-				_rmOverCountFile(this._fileDir, bckupfilename, this._maxFileNum, this._gzip)
+			if err == nil && t._rolltype == _ROLLFILE && t._maxFileNum > 0 {
+				_rmOverCountFile(t._fileDir, bckupfilename, t._maxFileNum, t._gzip)
 			}
 		}()
 	}
 	return
 }
 
-func (this *fileObj) close() (err error) {
+func (t *fileObj) close() (err error) {
 	defer catchError()
-	if this._fileHandler != nil {
-		err = this._fileHandler.Close()
+	if t._fileHandler != nil {
+		err = t._fileHandler.Close()
 	}
 	return
 }
@@ -655,9 +652,7 @@ func _console(s []byte, levelname []byte, flag _FORMAT, calldepth int) {
 	if flag != FORMAT_NANO {
 		buf := getOutBuffer(s, levelname, flag, k1(calldepth))
 		fmt.Print(string(buf.Bytes()))
-		if buf.Len() < 1<<14 {
-			buf.Free()
-		}
+		buf.Free()
 	} else {
 		fmt.Println(string(s))
 	}
