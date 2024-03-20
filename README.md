@@ -151,65 +151,58 @@
 |  go-logger | go-logger 常规格式化输出  |
 | go-logger NoFORMAT  |  go-logger 无格式化输出 |
 |  go-logger write |  go-logger write方法写数据 |
-|go/ log   |  go自带log库格式化输出 |
+|go/ log   |  go 原生log库  |
+|slog   |  go 原生 slog库 |
 
 ##### 测试数据1
 
-|   |   |  ns/op |  B/op |  allocs/op |
-| ------------ | ------------ | ------------ | ------------ | ------------ |
-|  zap | 1822892  |  6876 |  336 | 6  |
-|  zap |  1730490 | 7037  |  336 | 6  |
-| go-logger  |   1732777| 6461  | 296  | 3  |
-| go-logger  |  1758446 | 6419 | 296  |  3 |
-|  go-logger NoFORMAT | 2670556  | 4340  |   112|  1 |
-| go-logger NoFORMAT  |  2670556 |  4192 |112   |  1 |
-|  go-logger write |  2949058 |4087   | 112  |  1 |
-| go-logger write  |  2949058 |4093   | 112  |  1 |
-| go/ log  | 2162052  | 5551  |  296 | 3  |
-| go/ log  |  2139168 |  5715 |296   | 3  |
+###### 测试环境
+
+**amd64 cpu: Intel(R) Core(TM) i5-1035G1 CPU @ 1.00GHz**
+
+|||ns/op|B/op|allocs/op|
+| ------------ | ------------ | ------------ | ------------ | ------------ |------------ |
+|BenchmarkSerialZap|||||
+|BenchmarkSerialZap-4                |      234355            |  5750 ns/op        |     336 B/op      |    6 allocs/op|
+|BenchmarkSerialZap-8      |                202875             | 5732 ns/op             |336 B/op          |6 allocs/op|
+|BenchmarkSerialLogger|||||
+|BenchmarkSerialLogger-4                |   252968          |    4840 ns/op          |    64 B/op      |    1 allocs/op|
+|BenchmarkSerialLogger-8                 |  216819           |   4787 ns/op           |   64 B/op        |  1 allocs/op|
+|BenchmarkSerialLoggerNoFORMAT|||||
+|BenchmarkSerialLoggerNoFORMAT-4      |     302656          |    3896 ns/op       |      112 B/op      |    1 allocs/op|
+|BenchmarkSerialLoggerNoFORMAT-8        |   312416         |     3521 ns/op      |       112 B/op    |      1 allocs/op|
+|BenchmarkSerialLoggerWrite|||||
+|BenchmarkSerialLoggerWrite-4   |           291919        |      3519 ns/op     |        112 B/op         | 1 allocs/op|
+|BenchmarkSerialLoggerWrite-8       |       384574        |      3528 ns/op       |      112 B/op    |      1 allocs/op|
+|BenchmarkSerialNativeGoLog|||||
+|BenchmarkSerialNativeGoLog-4     |         277941       |       4463 ns/op       |      232 B/op      |    2 allocs/op|
+|BenchmarkSerialNativeGoL og-8      |        260077     |         4735 ns/op     |        232 B/op   |       2 allocs/op|
+|BenchmarkSerialSlog|||||
+|BenchmarkSerialSlog-4 |                    196550       |       5663 ns/op     |        328 B/op     |     6 allocs/op|
+|BenchmarkSerialSlog-8   |                 212346       |       5724 ns/op    |         328 B/op |         6 allocs/op|
 
 ##### Parallel 测试2
 
-|   |   |  ns/op | B/op	  | allocs/op  |
-| ------------ | ------------ | ------------ | ------------ | ------------ |
-|  zap |  1000000 |   10572|  336 |  6 |
-| zap  |  1000000 |  10414 |337|   6|
-| go-logger  |  1330300 | 8803  |  296 | 3  |
-|go-logger   | 1363034  |  8945 |296   | 3  |
-| go-logger NoFORMAT  |  2053911 | 7076  |   112|  1 |
-|go-logger NoFORMAT   |  1677360 | 6888  |  112 |  1 |
-|  go-logger write | 1939933  | 6304  |   112|   1|
-| go-logger write  | 1922352 |  6938 | 112  | 1  |
-| go/ log	  | 1204039  | 9612  | 296  | 3  |
-|go/ log	   |1362807   | 8875  | 296  | 3  |
-
-##### Parallel 测试3
-|   |   |  ns/op	 |B/op	   |  allocs/op |
-| ------------ | ------------ | ------------ | ------------ | ------------ |
-|zap   |  1000000 | 10331  | 336  | 6  |
-| zap  |1000000   | 10595  | 337  | 6  |
-|  go-logger | 1352834  |  8838 | 296  |  3 |
-|go-logger  | 1411458  | 8754  |  296 |  3 |
-| go-logger NoFORMAT  | 2266597  | 5331  | 112  | 1  |
-|go-logger NoFORMAT   | 2090455  |5631   | 112  |  1 |
-|  go-logger write	 |   2062870| 5746  |112   |  1 |
-|  go-logger write	 |  2037792 |  5963 |  112 | 1  |
-| go/ log  |1260445   | 9398  |280   | 3  |
-| go/ log  |  1272560 | 9123  | 280  | 3  |
-
-##### Parallel 测试4
-|   |   | ns/op	  |B/op	   |  allocs/op |
-| ------------ | ------------ | ------------ | ------------ | ------------ |
-| zap  |  1000000 |10230   |336   | 6  |
-|  zap |  1000000 | 10276  |337   | 6  |
-|  go-logger |  1332555 |  8774 | 296  | 3  |
-|  go-logger |  1391256 | 9226  |296   | 3  |
-|  go-logger NoFORMAT	 | 2154008  |   5483|  112 |  1 |
-| go-logger NoFORMAT	  | 2115795  | 5483  | 112  |  1 |
-|  go-logger write	 | 2059722  |  6069 |  112 | 1  |
-| go-logger write	  |1968092   |  6116 |  112 |  1 |
-| go/ log	  |  1249767 | 9930  |  280|  3|
-| go/ log	  |  1211719 |  9822 |  280 |  3 |
+|||ns/op|B/op|allocs/op|
+| ------------ | ------------ | ------------ | ------------ | ------------ |------------ |
+|BenchmarkParallelZap|||||
+|BenchmarkParallelZap-4  |                  144482   |           8194 ns/op     |        336 B/op      |    6 allocs/op|
+|BenchmarkParallelZap-8     |               132722        |      8217 ns/op        |     337 B/op      |    6 allocs/op|
+|BenchmarkParallelLogger|||||
+|BenchmarkParallelLogger-4 |                203913        |      5590 ns/op    |          64 B/op     |     1 allocs/op|
+|BenchmarkParallelLogger-8  |               223483       |       5462 ns/op    |          64 B/op    |      1 allocs/op|
+|BenchmarkParallelLoggerNoFORMAT|||||
+|BenchmarkParallelLoggerNoFORMAT-4    |     297376          |    4071 ns/op     |        112 B/op     |     1 allocs/op|
+|BenchmarkParallelLoggerNoFORMAT-8     |    304020         |     4128 ns/op     |        112 B/op     |     1 allocs/op|
+|BenchmarkParallelLoggerWrite|||||
+|BenchmarkParallelLoggerWrite-4|            265011     |         3900 ns/op     |        112 B/op  |        1 allocs/op|
+|BenchmarkParallelLoggerWrite-8 |           323252       |       3887 ns/op       |      112 B/op    |      1 allocs/op|
+|BenchmarkParallelNativeGoLog|||||
+|BenchmarkParallelNativeGoLog-4  |          190694     |         5370 ns/op     |       232 B/op     |     2 allocs/op|
+|BenchmarkParallelNativeGoLog-8 |           195561      |        5403 ns/op       |      232 B/op       |   2 allocs/op|
+|BenchmarkParallelSLog|||||
+|BenchmarkParallelSLog-4  |                 231270        |      5447 ns/op   |          328 B/op      |    6 allocs/op|
+|BenchmarkParallelSLog-8    |               194901       |       5392 ns/op       |      328 B/op      |    6 allocs/op|
 
 ##### 测试j结果
 
@@ -220,7 +213,3 @@
 ###### 内存消耗
 - go-logger  64
 - slog与zap  330  左右
-
-
-
-
