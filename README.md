@@ -151,7 +151,6 @@
 |  go-logger | go-logger 常规格式化输出  |
 | go-logger NoFORMAT  |  go-logger 无格式化输出 |
 |  go-logger write |  go-logger write方法写数据 |
-|go/ log   |  go 原生log库  |
 |slog   |  go 原生 slog库 |
 
 ##### 测试数据1
@@ -160,51 +159,15 @@
 
 **amd64 cpu: Intel(R) Core(TM) i5-1035G1 CPU @ 1.00GHz**
 
-|||ns/op|B/op|allocs/op|
-| ------------ | ------------ | ------------ | ------------ |------------ |
-|BenchmarkSerialZap|||||
-|BenchmarkSerialZap-4                |      234355            |  5750 ns/op        |     336 B/op      |    6 allocs/op|
-|BenchmarkSerialZap-8      |                202875             | 5732 ns/op             |336 B/op          |6 allocs/op|
-|BenchmarkSerialLogger|||||
-|BenchmarkSerialLogger-4                |   252968          |    4840 ns/op          |    64 B/op      |    1 allocs/op|
-|BenchmarkSerialLogger-8                 |  216819           |   4787 ns/op           |   64 B/op        |  1 allocs/op|
-|BenchmarkSerialLoggerNoFORMAT|||||
-|BenchmarkSerialLoggerNoFORMAT-4      |     302656          |    3896 ns/op       |      112 B/op      |    1 allocs/op|
-|BenchmarkSerialLoggerNoFORMAT-8        |   312416         |     3521 ns/op      |       112 B/op    |      1 allocs/op|
-|BenchmarkSerialLoggerWrite|||||
-|BenchmarkSerialLoggerWrite-4   |           291919        |      3519 ns/op     |        112 B/op         | 1 allocs/op|
-|BenchmarkSerialLoggerWrite-8       |       384574        |      3528 ns/op       |      112 B/op    |      1 allocs/op|
-|BenchmarkSerialNativeGoLog|||||
-|BenchmarkSerialNativeGoLog-4     |         277941       |       4463 ns/op       |      232 B/op      |    2 allocs/op|
-|BenchmarkSerialNativeGoL og-8      |        260077     |         4735 ns/op     |        232 B/op   |       2 allocs/op|
-|BenchmarkSerialSlog|||||
-|BenchmarkSerialSlog-4 |                    196550       |       5663 ns/op     |        328 B/op     |     6 allocs/op|
-|BenchmarkSerialSlog-8   |                 212346       |       5724 ns/op    |         328 B/op |         6 allocs/op|
+![](https://tlnet.top/f/1696141149_1696133036.jpg)
 
-##### Parallel 测试2
+![](https://tlnet.top/f/1696141691_1696133161.jpg)
 
-|||ns/op|B/op|allocs/op|
-| ------------ | ------------ | ------------ | ------------ |------------ |
-|BenchmarkParallelZap|||||
-|BenchmarkParallelZap-4  |                  144482   |           8194 ns/op     |        336 B/op      |    6 allocs/op|
-|BenchmarkParallelZap-8     |               132722        |      8217 ns/op        |     337 B/op      |    6 allocs/op|
-|BenchmarkParallelLogger|||||
-|BenchmarkParallelLogger-4 |                203913        |      5590 ns/op    |          64 B/op     |     1 allocs/op|
-|BenchmarkParallelLogger-8  |               223483       |       5462 ns/op    |          64 B/op    |      1 allocs/op|
-|BenchmarkParallelLoggerNoFORMAT|||||
-|BenchmarkParallelLoggerNoFORMAT-4    |     297376          |    4071 ns/op     |        112 B/op     |     1 allocs/op|
-|BenchmarkParallelLoggerNoFORMAT-8     |    304020         |     4128 ns/op     |        112 B/op     |     1 allocs/op|
-|BenchmarkParallelLoggerWrite|||||
-|BenchmarkParallelLoggerWrite-4|            265011     |         3900 ns/op     |        112 B/op  |        1 allocs/op|
-|BenchmarkParallelLoggerWrite-8 |           323252       |       3887 ns/op       |      112 B/op    |      1 allocs/op|
-|BenchmarkParallelNativeGoLog|||||
-|BenchmarkParallelNativeGoLog-4  |          190694     |         5370 ns/op     |       232 B/op     |     2 allocs/op|
-|BenchmarkParallelNativeGoLog-8 |           195561      |        5403 ns/op       |      232 B/op       |   2 allocs/op|
-|BenchmarkParallelSLog|||||
-|BenchmarkParallelSLog-4  |                 231270        |      5447 ns/op   |          328 B/op      |    6 allocs/op|
-|BenchmarkParallelSLog-8    |               194901       |       5392 ns/op       |      328 B/op      |    6 allocs/op|
+![](https://tlnet.top/f/1696141697_1696133275.jpg)
 
-##### 测试j结果
+![](https://tlnet.top/f/1696141701_1696133381.jpg)
+
+##### 测试结果
 
 ###### 时间消耗
 - go-logger    4500ns/op 左右
