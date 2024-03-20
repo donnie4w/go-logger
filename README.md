@@ -161,7 +161,7 @@
 **amd64 cpu: Intel(R) Core(TM) i5-1035G1 CPU @ 1.00GHz**
 
 |||ns/op|B/op|allocs/op|
-| ------------ | ------------ | ------------ | ------------ | ------------ |------------ |
+| ------------ | ------------ | ------------ | ------------ |------------ |
 |BenchmarkSerialZap|||||
 |BenchmarkSerialZap-4                |      234355            |  5750 ns/op        |     336 B/op      |    6 allocs/op|
 |BenchmarkSerialZap-8      |                202875             | 5732 ns/op             |336 B/op          |6 allocs/op|
@@ -184,7 +184,7 @@
 ##### Parallel 测试2
 
 |||ns/op|B/op|allocs/op|
-| ------------ | ------------ | ------------ | ------------ | ------------ |------------ |
+| ------------ | ------------ | ------------ | ------------ |------------ |
 |BenchmarkParallelZap|||||
 |BenchmarkParallelZap-4  |                  144482   |           8194 ns/op     |        336 B/op      |    6 allocs/op|
 |BenchmarkParallelZap-8     |               132722        |      8217 ns/op        |     337 B/op      |    6 allocs/op|
