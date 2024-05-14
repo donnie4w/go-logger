@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	VERSION string = "0.24.0"  //v2.0.4
+	VERSION string = "0.24.1"
 )
 
 type _LEVEL int8
@@ -351,6 +351,8 @@ unit    	日志文件大小单位
 maxFileNum  留的日志文件数
 */
 func (t *Logging) SetRollingFileLoop(fileDir, fileName string, maxFileSize int64, unit _UNIT, maxFileNum int) (l *Logging, err error) {
+	t._rwLock.Lock()
+	defer t._rwLock.Unlock()
 	if fileDir == "" {
 		fileDir, _ = os.Getwd()
 	}
@@ -383,6 +385,8 @@ fileName 日志文件名
 mode   指定 小时，天，月
 */
 func (t *Logging) SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (l *Logging, err error) {
+	t._rwLock.Lock()
+	defer t._rwLock.Unlock()
 	if fileDir == "" {
 		fileDir, _ = os.Getwd()
 	}
@@ -444,7 +448,7 @@ func (t *Logging) println(_level _LEVEL, calldepth int, v ...interface{}) {
 		if openFileErr == nil {
 			if t._format != FORMAT_NANO {
 				bs := fmt.Append([]byte{}, v...)
-				buf := getOutBuffer(bs, getlevelname(_level, t._format), t._format, k1(calldepth)+1)
+				buf := getOutBuffer(bs, getlevelname(_level, t._format), t._format, k1(calldepth))
 				t._rwLock.RLock()
 				t._fileObj.write2file(buf.Bytes())
 				t._rwLock.RUnlock()
