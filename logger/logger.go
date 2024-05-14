@@ -1,5 +1,7 @@
-// Copyright (c) , donnie <donnie4w@gmail.com>
+// Copyright (c) 2023, donnie <donnie4w@gmail.com>
 // All rights reserved.
+// Use of t source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
 
 package logger
 
@@ -19,12 +21,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	. "github.com/donnie4w/gofer/buffer"
-	. "github.com/donnie4w/gofer/hashmap"
+	"github.com/donnie4w/gofer/buffer"
+	"github.com/donnie4w/gofer/hashmap"
 )
 
 const (
-	_VER string = "0.23.0"
+	VERSION string = "0.24.0"  //v2.0.4
 )
 
 type _LEVEL int8
@@ -203,14 +205,14 @@ func Fatal(v ...interface{}) *Logging {
 	return _staticLogger()
 }
 
-func _print(_format _FORMAT, level, _default_level _LEVEL, calldepth int, v ...interface{}) {
+func _print(_ _FORMAT, level, _default_level _LEVEL, calldepth int, v ...interface{}) {
 	if level < _default_level {
 		return
 	}
 	_staticLogger().println(level, k1(calldepth), v...)
 }
 
-func __print(_format _FORMAT, level, _default_level _LEVEL, calldepth int, v ...interface{}) {
+func __print(_format _FORMAT, level, _ _LEVEL, calldepth int, v ...interface{}) {
 	_console(fmt.Append([]byte{}, v...), getlevelname(level, default_format), _format, k1(calldepth))
 }
 
@@ -287,7 +289,7 @@ func (t *Logging) Fatal(v ...interface{}) *Logging {
 	return t
 }
 
-func (t *Logging) Write(bs []byte) (bakfn string, err error) {
+func (t *Logging) WriteBin(bs []byte) (bakfn string, err error) {
 	if t._fileObj._isFileWell {
 		var openFileErr error
 		if t._fileObj.isMustBackUp() {
@@ -295,10 +297,27 @@ func (t *Logging) Write(bs []byte) (bakfn string, err error) {
 		}
 		if openFileErr == nil {
 			t._rwLock.RLock()
-			defer t._rwLock.RUnlock()
 			_, err = t._fileObj.write2file(bs)
-			return
+			t._rwLock.RUnlock()
 		}
+	} else {
+		err = errors.New("no log file found")
+	}
+	return
+}
+func (t *Logging) Write(bs []byte) (n int, err error) {
+	if t._fileObj._isFileWell {
+		var openFileErr error
+		if t._fileObj.isMustBackUp() {
+			_, err, openFileErr = t.backUp()
+		}
+		if openFileErr == nil {
+			t._rwLock.RLock()
+			n, err = t._fileObj.write2file(bs)
+			t._rwLock.RUnlock()
+		}
+	} else {
+		err = errors.New("no log file found")
 	}
 	return
 }
@@ -423,19 +442,18 @@ func (t *Logging) println(_level _LEVEL, calldepth int, v ...interface{}) {
 			_, openFileErr, _ = t.backUp()
 		}
 		if openFileErr == nil {
-			func() {
-				if t._format != FORMAT_NANO {
-					bs := fmt.Append([]byte{}, v...)
-					buf := getOutBuffer(bs, getlevelname(_level, t._format), t._format, k1(calldepth)+1)
-					t._rwLock.RLock()
-					defer t._rwLock.RUnlock()
-					t._fileObj.write2file(buf.Bytes())
-					buf.Free()
-				} else {
-					bs := make([]byte, 0)
-					t._fileObj.write2file(fmt.Appendln(bs, v...))
-				}
-			}()
+			if t._format != FORMAT_NANO {
+				bs := fmt.Append([]byte{}, v...)
+				buf := getOutBuffer(bs, getlevelname(_level, t._format), t._format, k1(calldepth)+1)
+				t._rwLock.RLock()
+				t._fileObj.write2file(buf.Bytes())
+				t._rwLock.RUnlock()
+				buf.Free()
+			} else {
+				t._rwLock.RLock()
+				t._fileObj.write2file(fmt.Appendln([]byte{}, v...))
+				t._rwLock.RUnlock()
+			}
 		}
 	}
 	if t._isConsole {
@@ -507,7 +525,7 @@ func (t *fileObj) isMustBackUp() bool {
 			return true
 		}
 	case _ROLLFILE:
-		return t._fileSize > 0 && t._fileSize >= t._maxSize*int64(t._unit)
+		return t._fileSize > 0 && atomic.LoadInt64(&t._fileSize) >= t._maxSize*int64(t._unit)
 	}
 	return false
 }
@@ -662,7 +680,7 @@ func k1(calldepth int) int {
 	return calldepth + 1
 }
 
-func getOutBuffer(s []byte, levelname []byte, flag _FORMAT, calldepth int) (buf *Buffer) {
+func getOutBuffer(s []byte, levelname []byte, flag _FORMAT, calldepth int) (buf *buffer.Buffer) {
 	buf = output(flag, k1(calldepth), s, levelname)
 	return
 }
@@ -671,7 +689,7 @@ func mkdirDir(dir string) (e error) {
 	_, er := os.Stat(dir)
 	b := er == nil || os.IsExist(er)
 	if !b {
-		if err := os.MkdirAll(dir, 0666); err != nil {
+		if err := os.MkdirAll(dir, 0777); err != nil {
 			if os.IsPermission(err) {
 				e = err
 			}
@@ -687,7 +705,7 @@ func isFileExist(path string) bool {
 
 func catchError() {
 	if err := recover(); err != nil {
-		Fatal(string(debug.Stack()))
+		fmt.Println(string(debug.Stack()))
 	}
 }
 
@@ -774,9 +792,9 @@ func lgzip(gzfile, gzname, srcfile string) (err error) {
 	return
 }
 
-var m = NewLimitMap[any, runtime.Frame](1 << 13)
+var m = hashmap.NewLimitMap[any, runtime.Frame](1 << 13)
 
-func output(flag _FORMAT, calldepth int, s []byte, levelname []byte) (buf *Buffer) {
+func output(flag _FORMAT, calldepth int, s []byte, levelname []byte) (buf *buffer.Buffer) {
 	now := _time()
 	var file *string
 	var line *int
@@ -792,7 +810,7 @@ func output(flag _FORMAT, calldepth int, s []byte, levelname []byte) (buf *Buffe
 		file = &f.File
 		line = &f.Line
 	}
-	buf = NewBufferByPool()
+	buf = buffer.NewBufferByPool()
 	formatHeader(buf, now, file, line, flag, levelname)
 	buf.Write(s)
 	if len(s) == 0 || s[len(s)-1] != '\n' {
@@ -801,7 +819,7 @@ func output(flag _FORMAT, calldepth int, s []byte, levelname []byte) (buf *Buffe
 	return
 }
 
-func formatHeader(buf *Buffer, t time.Time, file *string, line *int, flag _FORMAT, levelname []byte) {
+func formatHeader(buf *buffer.Buffer, t time.Time, file *string, line *int, flag _FORMAT, levelname []byte) {
 	buf.Write(levelname)
 	if flag&(FORMAT_DATE|FORMAT_TIME|FORMAT_MICROSECNDS) != 0 {
 		if flag&FORMAT_DATE != 0 {
@@ -846,37 +864,37 @@ func formatHeader(buf *Buffer, t time.Time, file *string, line *int, flag _FORMA
 	}
 }
 
-func formatHeaderLength(t time.Time, file string, line int, flag _FORMAT, levelname []byte) (i int) {
-	i += len(levelname)
-	if flag&(FORMAT_DATE|FORMAT_TIME|FORMAT_MICROSECNDS) != 0 {
-		if flag&FORMAT_DATE != 0 {
-			i += 11
-		}
-		if flag&(FORMAT_TIME|FORMAT_MICROSECNDS) != 0 {
-			i += 8
-			if flag&FORMAT_MICROSECNDS != 0 {
-				i += 7
-			}
-			i += 1
-		}
-	}
-	if flag&(FORMAT_SHORTFILENAME|FORMAT_LONGFILENAME) != 0 {
-		if flag&FORMAT_SHORTFILENAME != 0 {
-			for k := len(file) - 1; k > 0; k-- {
-				if file[k] == '/' {
-					i += len(file) - k
-					break
-				}
-			}
-		} else {
-			i += len(file)
-		}
-		i += 4
-	}
-	return
-}
+// func formatHeaderLength(_ time.Time, file string, _ int, flag _FORMAT, levelname []byte) (i int) {
+// 	i += len(levelname)
+// 	if flag&(FORMAT_DATE|FORMAT_TIME|FORMAT_MICROSECNDS) != 0 {
+// 		if flag&FORMAT_DATE != 0 {
+// 			i += 11
+// 		}
+// 		if flag&(FORMAT_TIME|FORMAT_MICROSECNDS) != 0 {
+// 			i += 8
+// 			if flag&FORMAT_MICROSECNDS != 0 {
+// 				i += 7
+// 			}
+// 			i += 1
+// 		}
+// 	}
+// 	if flag&(FORMAT_SHORTFILENAME|FORMAT_LONGFILENAME) != 0 {
+// 		if flag&FORMAT_SHORTFILENAME != 0 {
+// 			for k := len(file) - 1; k > 0; k-- {
+// 				if file[k] == '/' {
+// 					i += len(file) - k
+// 					break
+// 				}
+// 			}
+// 		} else {
+// 			i += len(file)
+// 		}
+// 		i += 4
+// 	}
+// 	return
+// }
 
-func itoa(buf *Buffer, i int, wid int) {
+func itoa(buf *buffer.Buffer, i int, wid int) {
 	var b [20]byte
 	bp := len(b) - 1
 	for i >= 10 || wid > 1 {
