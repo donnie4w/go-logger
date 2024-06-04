@@ -1,6 +1,9 @@
 package logger
 
 import (
+	"log/slog"
+	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -15,6 +18,8 @@ func Test_Log(t *testing.T) {
 	Warn("333333333")
 	// SetLevel(FATAL) //设置为FATAL后，下面Error()级别小于FATAL,将不打印出来
 	Error("444444444")
+	SetFormat(FORMAT_LEVELFLAG | FORMAT_DATE | FORMAT_MICROSECNDS | FORMAT_SHORTFILENAME)
+	SetFormatter("{message}|{level} {time} {file}\n")
 	// SetFormat(FORMAT_NANO)
 	Fatal("5555555555")
 }
@@ -59,5 +64,39 @@ func BenchmarkSerialLog(b *testing.B) {
 		// log.Info(i, ">>>bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
 		// log.Warn(i, ">>>cccccccccccccccccccccccccccccccccccc")
 		// log.log.Error(i, ">>>dddddddddddddddddddddddddddddddddddd")
+	}
+}
+
+func TestSlog(t *testing.T) {
+	replace := func(groups []string, a slog.Attr) slog.Attr {
+		if a.Key == slog.SourceKey {
+			source := a.Value.Any().(*slog.Source)
+			source.File = filepath.Base(source.File)
+		}
+		return a
+	}
+	loggingFile := NewLogger()
+	loggingFile.SetRollingFile("./1", "slogfile.txt", 100, KB)
+	h := slog.NewJSONHandler(loggingFile, &slog.HandlerOptions{AddSource: true, ReplaceAttr: replace})
+	log := slog.New(h)
+	for i := 0; i < 1000; i++ {
+		log.Info(">>>aaaaaaaaaaaaaaaaaaaaaaa:" + strconv.Itoa(i))
+	}
+}
+
+func TestOption4time(t *testing.T) {
+	SetOption(&Option{Level: LEVEL_INFO, Console: true, FileOption: &FileTimeMode{Filename: "testlogtime.log", Maxbuckup: 3, IsCompress: false, Timemode: MODE_MONTH}})
+	for i := 0; i < 100; i++ {
+		Debug("aaaaaaaaaa", 1111111111111111111)
+		Info("bbbbbbbbbb", 2222222222222222222)
+		time.Sleep(2 * time.Second)
+	}
+}
+
+func TestOption4size(t *testing.T) {
+	SetOption(&Option{Level: LEVEL_DEBUG, Console: true, FileOption: &FileSizeMode{Filename: "testlog.log", Maxsize: 500, Maxbuckup: 3, IsCompress: false}})
+	for i := 0; i < 20; i++ {
+		Debug("bbbbbbbbbb", 222222222)
+		time.Sleep(100 * time.Millisecond)
 	}
 }
