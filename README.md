@@ -9,7 +9,7 @@
 - 文件数回滚：支持按照日志文件数自动文件回滚，并防止文件数过多。
 - 文件压缩：支持按文件大小切分日志文件，并压缩归档日志文件。
 
-### go-logger +  slog 
+### go-logger +  slog
 
 -  支持 直接作为go 标准库  log/slog  的日志文件管理器，实现 slog的日志文件按小时，天，月份，文件大小等多种方式进行日志文件切割，同时也支持按文件大小切分日志文件后,压缩归档日志文件。
 - go-logger + slog 内存分配与性能 与 slog直接写日志文件一致。
@@ -25,9 +25,9 @@
 
 ### 设置日志打印格式：
 
-##### 如： SetFormat(FORMAT_SHORTFILENAME|FORMAT_DATE|FORMAT_TIME)
+##### 如： SetFormat(FORMAT_LEVELFLAG | FORMAT_SHORTFILENAME | FORMAT_DATE | FORMAT_TIME)
 
-###### FORMAT_SHORTFILENAME|FORMAT_DATE|FORMAT_TIME 为默认格式
+###### FORMAT_LEVELFLAG | FORMAT_SHORTFILENAME | FORMAT_DATE | FORMAT_TIME 为默认格式
 
 ##### 不调用SetFormat()时，使用默认格式
 
@@ -40,7 +40,22 @@
 
 ##### 打印结果形如：
 
-###### [DEBUG]2023/02/14 01:33:27 logging_test.go:10: 11111111111111
+###### [DEBUG]2023/02/14 01:33:27 logging_test.go 10: 11111111111111
+
+### 设置日志标识输出格式  `SetFormatter`
+
+######  SetFormatter("{level} {time} {file}:{message}\n")
+
+###### 默认格式："{level} {time} {file}:{message}\n"
+
+	{level}        日志级别信息：如[Debug],[Info],[Warn],[Error],[Fatal]
+	{time}         日志时间信息
+	{file}         文件位置行号信息
+	{message}      日志内容
+
+###### 说明：除了关键标识 {message}  {time}  {file}  {level} 外，其他内容原样输出，如 | ， 空格，换行  等
+
+------------
 
 ### 日志级别
 
@@ -58,7 +73,7 @@
 	SetLevel(OFF)
 	则 所有日志不再打印出来
 	所以正式环境，常设置为ERROR或以上的日志级别，项目中Debug()，Info(),warn()等日志不再打印出来，具体视实际需求设置
-	
+
 
 #### 需将日志写入文件时，则要设置日志文件
 
@@ -105,6 +120,45 @@
 	log.SetRollingFileLoop(`d:/foldTest`, "log.txt", 300, MB, 50) 
 	设置日志文件大小最大为300M
 	日志文件只保留最新的50个
+
+### Option参数
+
+###### 建议通过option参数设置log的参数，更加易于维护
+
+	Level      ：日志级别
+	Console    ：控制台打印
+	Format     ：日志格式，默认：FORMAT_LEVELFLAG | FORMAT_SHORTFILENAME | FORMAT_DATE | FORMAT_TIME
+	Formatter  ：日志输出  默认："{level} {time} {file}:{mesaage}\n"
+	FileOption ：日志文件接口参数
+
+#### FileOption介绍
+
+###### FileOption为接口，有FileSizeMode与FileTimeMode两个实现对象
+
+###### FileTimeMode对象
+
+	Filename   日志文件路径
+	Timemode   按小时，天，月份：MODE_HOUR，MODE_DAY，MODE_MONTH
+	Maxbuckup  最多备份日志文件数
+	IsCompress  备份文件是否压缩
+
+###### FileSizeMode对象
+
+	Filename   日志文件路径
+	Maxsize    日志文件大小的最大值，超过则滚动备份
+	Maxbuckup  最多备份日志文件数
+	IsCompress  备份文件是否压缩
+
+##### SetOption示例1
+
+	SetOption(&Option{Level: LEVEL_DEBUG, Console: false, FileOption: &FileTimeMode{Filename: "testlogtime.log", Maxbuckup: 10, IsCompress: true, Timemode: MODE_DAY}})
+
+##### SetOption示例2
+
+	SetOption(&Option{Level: LEVEL_DEBUG, Console: false, FileOption: &FileSizeMode{Filename: "testlog.log", Maxsize: 1<<30, Maxbuckup: 10, IsCompress: true}})
+
+
+------------
 
 #### 控制台日志设置
 
