@@ -38,7 +38,7 @@
 	精确到日期			FORMAT_DATE		如：2023/02/14
 	精确到秒				FORMAT_TIME		如：01:33:27
 	精确到微秒			FORMAT_MICROSECNDS	如：01:33:27.123456
-        日志级别标识                    FORMAT_LEVELFLAG     如：[Debug],[Info],[Warn][Error][Fatal]             
+    日志级别标识                    FORMAT_LEVELFLAG     如：[Debug],[Info],[Warn][Error][Fatal]             
 
 ##### 打印结果形如：
 
