@@ -41,7 +41,7 @@ const _DATEFORMAT_HOUR = "2006010215"
 const _DATEFORMAT_MONTH = "200601"
 const default_format = FORMAT_LEVELFLAG | FORMAT_SHORTFILENAME | FORMAT_DATE | FORMAT_TIME
 const default_level = LEVEL_ALL
-const default_formatter = "{level} {time} {file}:{message}\n"
+const default_formatter = "{level}{time} {file}:{message}\n"
 
 var static_mu = new(sync.Mutex)
 
@@ -127,7 +127,7 @@ func SetLevel(level _LEVEL) *Logging {
 	return static_lo.SetLevel(level)
 }
 
-/*设置输出格式，默认: "{level} {time} {file}:{message}\n" */
+/*设置输出格式，默认: "{level}{time} {file}:{message}\n" */
 func SetFormatter(formatter string) *Logging {
 	return static_lo.SetFormatter(formatter)
 }
