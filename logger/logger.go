@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	VERSION string = "0.25.0"
+	VERSION string = "0.25.1"
 )
 
 type _LEVEL int8
@@ -277,6 +277,7 @@ type Logging struct {
 	_maxBackup   int
 	_isConsole   bool
 	_gzip        bool
+	_isTicker    int32
 }
 
 // return a new log object
@@ -434,6 +435,12 @@ func (t *Logging) SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (l
 	t.newfileHandler()
 	if err = t._filehandler.openFileHandler(); err == nil {
 		t._isFileWell = true
+		go t.ticker(func() {
+			defer catchError()
+			if t._filehandler.mustBackUp() {
+				t.backUp()
+			}
+		})
 	}
 	return t, err
 }
@@ -501,6 +508,12 @@ func (t *Logging) SetOption(option *Option) *Logging {
 			t.newfileHandler()
 			if err := t._filehandler.openFileHandler(); err == nil {
 				t._isFileWell = true
+				go t.ticker(func() {
+					defer catchError()
+					if t._filehandler.mustBackUp() {
+						t.backUp()
+					}
+				})
 			}
 		}
 	}
@@ -573,6 +586,7 @@ type fileHandler struct {
 	_maxbackup   int
 	_mode        _MODE_TIME
 	_gzip        bool
+	_lastPrint   int64
 }
 
 func (t *fileHandler) openFileHandler() (e error) {
@@ -608,17 +622,21 @@ func (t *fileHandler) write2file(bs []byte) (n int, e error) {
 	if bs != nil {
 		if n, e = _write2file(t._fileHandle, bs); e == nil {
 			t.addFileSize(int64(n))
+			if t._cutmode == _TIMEMODE {
+				t._lastPrint = _time().Unix()
+			}
 		}
 	}
 	return
 }
 
 func (t *fileHandler) mustBackUp() bool {
+	if t._fileSize == 0 {
+		return false
+	}
 	switch t._cutmode {
 	case _TIMEMODE:
-		if _time().Unix() >= t._tomorSecond {
-			return true
-		}
+		return _time().Unix() >= t._tomorSecond
 	case _SIZEMODE:
 		return t._fileSize > 0 && atomic.LoadInt64(&t._fileSize) >= t._maxSize*int64(t._unit)
 	}
@@ -627,7 +645,7 @@ func (t *fileHandler) mustBackUp() bool {
 
 func (t *fileHandler) rename() (bckupfilename string, err error) {
 	if t._cutmode == _TIMEMODE {
-		bckupfilename = getBackupDayliFileName(t._fileDir, t._fileName, t._mode, t._gzip)
+		bckupfilename = getBackupDayliFileName(t._lastPrint, t._fileDir, t._fileName, t._mode, t._gzip)
 	} else {
 		bckupfilename, err = getBackupRollFileName(t._fileDir, t._fileName, t._gzip)
 	}
@@ -673,22 +691,33 @@ func tomorSecond(mode _MODE_TIME) int64 {
 	}
 }
 
-func _yestStr(mode _MODE_TIME) string {
-	now := _time()
+func backupStr4Time(mode _MODE_TIME, now time.Time) string {
 	switch mode {
-	case MODE_DAY:
-		return now.AddDate(0, 0, -1).Format(_DATEFORMAT_DAY)
 	case MODE_HOUR:
-		return now.Add(-1 * time.Hour).Format(_DATEFORMAT_HOUR)
+		return now.Format(_DATEFORMAT_HOUR)
 	case MODE_MONTH:
-		return now.AddDate(0, -1, 0).Format(_DATEFORMAT_MONTH)
+		return now.Format(_DATEFORMAT_MONTH)
 	default:
-		return now.AddDate(0, 0, -1).Format(_DATEFORMAT_DAY)
+		return now.Format(_DATEFORMAT_DAY)
 	}
 }
 
-func getBackupDayliFileName(dir, filename string, mode _MODE_TIME, isGzip bool) (bckupfilename string) {
-	timeStr := _yestStr(mode)
+//func _yestStr(mode _MODE_TIME, now time.Time) string {
+//	//now := _time()
+//	switch mode {
+//	case MODE_DAY:
+//		return now.AddDate(0, 0, -1).Format(_DATEFORMAT_DAY)
+//	case MODE_HOUR:
+//		return now.Add(-1 * time.Hour).Format(_DATEFORMAT_HOUR)
+//	case MODE_MONTH:
+//		return now.AddDate(0, -1, 0).Format(_DATEFORMAT_MONTH)
+//	default:
+//		return now.AddDate(0, 0, -1).Format(_DATEFORMAT_DAY)
+//	}
+//}
+
+func getBackupDayliFileName(unixTimestamp int64, dir, filename string, mode _MODE_TIME, isGzip bool) (bckupfilename string) {
+	timeStr := backupStr4Time(mode, time.Unix(unixTimestamp, 0))
 	index := strings.LastIndex(filename, ".")
 	if index <= 0 {
 		index = len(filename)
@@ -705,7 +734,6 @@ func getBackupDayliFileName(dir, filename string, mode _MODE_TIME, isGzip bool) 
 			bckupfilename = _getBackupfilename(1, dir, fmt.Sprint(fname, "_", timeStr), suffix, isGzip)
 		}
 	}
-
 	return
 }
 
@@ -1004,4 +1032,26 @@ func itoa(buf *buffer.Buffer, i int, wid int) {
 	}
 	b[bp] = byte('0' + i)
 	buf.Write(b[bp:])
+}
+
+func (t *Logging) ticker(fn func()) {
+	if !atomic.CompareAndSwapInt32(&t._isTicker, 0, 1) {
+		return
+	}
+	for {
+		waitTime := timeUntilNextWholeHour()
+		if waitTime <= 0 {
+			<-time.After(time.Second)
+			continue
+		}
+		<-time.After(waitTime)
+		fn()
+	}
+	atomic.CompareAndSwapInt32(&t._isTicker, 1, 0)
+}
+
+func timeUntilNextWholeHour() time.Duration {
+	now := time.Now()
+	nextWholeHour := time.Date(now.Year(), now.Month(), now.Day(), now.Hour()+1, 0, 0, 1, now.Location())
+	return nextWholeHour.Sub(now)
 }
