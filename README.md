@@ -36,7 +36,7 @@
 	长文件名及行数			FORMAT_LONGFILENAME	全路径
 	短文件名及行数			FORMAT_SHORTFILENAME	如：logging_test.go:10
 	精确到日期			FORMAT_DATE		如：2023/02/14
-	精确到秒				FORMAT_TIME		如：01:33:27
+	精确到秒			FORMAT_TIME		如：01:33:27
 	精确到微秒			FORMAT_MICROSECNDS	如：01:33:27.123456
     日志级别标识                    FORMAT_LEVELFLAG     如：[Debug],[Info],[Warn][Error][Fatal]             
 
@@ -130,7 +130,7 @@
 	Level      ：日志级别
 	Console    ：控制台打印
 	Format     ：日志格式，默认：FORMAT_LEVELFLAG | FORMAT_SHORTFILENAME | FORMAT_DATE | FORMAT_TIME
-	Formatter  ：日志输出  默认："{level} {time} {file}:{mesaage}\n"
+	Formatter  ：日志输出  默认："{level}{time} {file}:{mesaage}\n"
 	FileOption ：日志文件接口参数
 
 #### FileOption介绍
