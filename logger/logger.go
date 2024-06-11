@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	VERSION string = "0.25.1"
+	VERSION string = "0.25.2"
 )
 
 type _LEVEL int8
@@ -575,18 +575,18 @@ func (t *Logging) println(_level _LEVEL, calldepth int, v ...interface{}) {
 }
 
 type fileHandler struct {
-	_fileDir     string
-	_fileName    string
-	_maxSize     int64
-	_fileSize    int64
-	_unit        _UNIT
-	_fileHandle  *os.File
-	_cutmode     _CUTMODE
-	_tomorSecond int64
-	_maxbackup   int
-	_mode        _MODE_TIME
-	_gzip        bool
-	_lastPrint   int64
+	_fileDir    string
+	_fileName   string
+	_maxSize    int64
+	_fileSize   int64
+	_unit       _UNIT
+	_fileHandle *os.File
+	_cutmode    _CUTMODE
+	//_tomorSecond int64
+	_maxbackup int
+	_mode      _MODE_TIME
+	_gzip      bool
+	_lastPrint int64
 }
 
 func (t *fileHandler) openFileHandler() (e error) {
@@ -604,7 +604,6 @@ func (t *fileHandler) openFileHandler() (e error) {
 		fprintln(default_format, LEVEL_ERROR, LEVEL_ERROR, 1, nil, e.Error())
 		return
 	}
-	t._tomorSecond = tomorSecond(t._mode)
 	if fs, err := t._fileHandle.Stat(); err == nil {
 		t._fileSize = fs.Size()
 	} else {
@@ -636,7 +635,7 @@ func (t *fileHandler) mustBackUp() bool {
 	}
 	switch t._cutmode {
 	case _TIMEMODE:
-		return _time().Unix() >= t._tomorSecond
+		return !isCurrentTime(t._mode, t._lastPrint)
 	case _SIZEMODE:
 		return t._fileSize > 0 && atomic.LoadInt64(&t._fileSize) >= t._maxSize*int64(t._unit)
 	}
@@ -677,18 +676,31 @@ func (t *fileHandler) close() (err error) {
 	return
 }
 
-func tomorSecond(mode _MODE_TIME) int64 {
+//func tomorSecond(mode _MODE_TIME) int64 {
+//	now := _time()
+//	switch mode {
+//	case MODE_DAY:
+//		return time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location()).Unix()
+//	case MODE_HOUR:
+//		return time.Date(now.Year(), now.Month(), now.Day(), now.Hour()+1, 0, 0, 0, now.Location()).Unix()
+//	case MODE_MONTH:
+//		return time.Date(now.Year(), now.Month()+1, 0, 0, 0, 0, 0, now.Location()).AddDate(0, 0, 1).Unix()
+//	default:
+//		return time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location()).Unix()
+//	}
+//}
+
+func isCurrentTime(mode _MODE_TIME, timestamp int64) bool {
 	now := _time()
 	switch mode {
 	case MODE_DAY:
-		return time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location()).Unix()
+		return timestamp >= time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).Unix()
 	case MODE_HOUR:
-		return time.Date(now.Year(), now.Month(), now.Day(), now.Hour()+1, 0, 0, 0, now.Location()).Unix()
+		return timestamp >= time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), 0, 0, 0, now.Location()).Unix()
 	case MODE_MONTH:
-		return time.Date(now.Year(), now.Month()+1, 0, 0, 0, 0, 0, now.Location()).AddDate(0, 0, 1).Unix()
-	default:
-		return time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location()).Unix()
+		return timestamp >= time.Date(now.Year(), now.Month(), 0, 0, 0, 0, 0, now.Location()).Unix()
 	}
+	return false
 }
 
 func backupStr4Time(mode _MODE_TIME, now time.Time) string {
@@ -1052,6 +1064,6 @@ func (t *Logging) ticker(fn func()) {
 
 func timeUntilNextWholeHour() time.Duration {
 	now := time.Now()
-	nextWholeHour := time.Date(now.Year(), now.Month(), now.Day(), now.Hour()+1, 0, 0, 1, now.Location())
+	nextWholeHour := time.Date(now.Year(), now.Month(), now.Day(), now.Hour()+1, 0, 1, 0, now.Location())
 	return nextWholeHour.Sub(now)
 }
