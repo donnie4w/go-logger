@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	VERSION string = "0.25.2"
+	VERSION string = "0.25.3"
 )
 
 type _LEVEL int8
@@ -582,11 +582,10 @@ type fileHandler struct {
 	_unit       _UNIT
 	_fileHandle *os.File
 	_cutmode    _CUTMODE
-	//_tomorSecond int64
-	_maxbackup int
-	_mode      _MODE_TIME
-	_gzip      bool
-	_lastPrint int64
+	_maxbackup  int
+	_mode       _MODE_TIME
+	_gzip       bool
+	_lastPrint  int64
 }
 
 func (t *fileHandler) openFileHandler() (e error) {
@@ -606,6 +605,7 @@ func (t *fileHandler) openFileHandler() (e error) {
 	}
 	if fs, err := t._fileHandle.Stat(); err == nil {
 		t._fileSize = fs.Size()
+		t._lastPrint = fs.ModTime().Unix()
 	} else {
 		e = err
 	}
@@ -635,7 +635,7 @@ func (t *fileHandler) mustBackUp() bool {
 	}
 	switch t._cutmode {
 	case _TIMEMODE:
-		return !isCurrentTime(t._mode, t._lastPrint)
+		return t._lastPrint > 0 && !isCurrentTime(t._mode, t._lastPrint)
 	case _SIZEMODE:
 		return t._fileSize > 0 && atomic.LoadInt64(&t._fileSize) >= t._maxSize*int64(t._unit)
 	}
