@@ -116,23 +116,23 @@ const (
 	_SIZEMODE _CUTMODE = 2
 )
 
-/*设置打印格式*/
+// SetFormat /*设置打印格式*/
 func SetFormat(format _FORMAT) *Logging {
 	return static_lo.SetFormat(format)
 }
 
-/*设置控制台日志级别，默认ALL*/
+// SetLevel /*设置控制台日志级别，默认ALL*/
 // Setting the log Level
 func SetLevel(level _LEVEL) *Logging {
 	return static_lo.SetLevel(level)
 }
 
-/*设置输出格式，默认: "{level}{time} {file}:{message}\n" */
+// SetFormatter /*设置输出格式，默认: "{level}{time} {file}:{message}\n" */
 func SetFormatter(formatter string) *Logging {
 	return static_lo.SetFormatter(formatter)
 }
 
-// print logs on the console or not. default true
+// SetConsole print logs on the console or not. default true
 func SetConsole(on bool) *Logging {
 	return static_lo.SetConsole(on)
 
@@ -143,7 +143,7 @@ func GetStaticLogger() *Logging {
 	return _staticLogger()
 }
 
-// when the log file(fileDir+`\`+fileName) exceeds the specified size(maxFileSize), it will be backed up with a specified file name
+// SetRollingFile when the log file(fileDir+`\`+fileName) exceeds the specified size(maxFileSize), it will be backed up with a specified file name
 // Parameters:
 //   - fileDir   :directory where log files are stored, If it is the current directory, you also can set it to ""
 //   - fileName  : log file name
@@ -156,7 +156,7 @@ func SetRollingFile(fileDir, fileName string, maxFileSize int64, unit _UNIT) (l 
 	return SetRollingFileLoop(fileDir, fileName, maxFileSize, unit, 0)
 }
 
-// yesterday's log data is backed up to a specified log file each day
+// SetRollingDaily yesterday's log data is backed up to a specified log file each day
 // Parameters:
 //   - fileDir   :directory where log files are stored, If it is the current directory, you also can set it to ""
 //   - fileName  : log file name
@@ -167,7 +167,7 @@ func SetRollingDaily(fileDir, fileName string) (l *Logging, err error) {
 	return SetRollingByTime(fileDir, fileName, MODE_DAY)
 }
 
-// like SetRollingFile,but only keep (maxFileNum) current files
+// SetRollingFileLoop like SetRollingFile,but only keep (maxFileNum) current files
 // - maxFileNum : the number of files that are retained
 // Deprecated
 // Use SeOption() instead.
@@ -175,7 +175,7 @@ func SetRollingFileLoop(fileDir, fileName string, maxFileSize int64, unit _UNIT,
 	return static_lo.SetRollingFileLoop(fileDir, fileName, maxFileSize, unit, maxFileNum)
 }
 
-// like SetRollingDaily,but supporte hourly backup ,dayly backup and monthly backup
+// SetRollingByTime like SetRollingDaily,but supporte hourly backup ,dayly backup and monthly backup
 // mode : 	MODE_HOUR    MODE_DAY   MODE_MONTH
 // Deprecated
 // Use SeOption() instead.
@@ -183,14 +183,14 @@ func SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (l *Logging, er
 	return static_lo.SetRollingByTime(fileDir, fileName, mode)
 }
 
-// when set true, the specified backup file of both SetRollingFile and SetRollingFileLoop will be save as a compressed file
+// SetGzipOn when set true, the specified backup file of both SetRollingFile and SetRollingFileLoop will be save as a compressed file
 // Deprecated
 // Use SeOption() instead.
 func SetGzipOn(is bool) (l *Logging) {
 	return static_lo.SetGzipOn(is)
 }
 
-// 配置对象
+// SetOption 配置对象
 func SetOption(option *Option) *Logging {
 	return static_lo.SetOption(option)
 }
@@ -199,31 +199,31 @@ func _staticLogger() *Logging {
 	return static_lo
 }
 
-// Logs are printed at the DEBUG level
+// Debug Logs are printed at the DEBUG level
 func Debug(v ...interface{}) *Logging {
 	_println(LEVEL_DEBUG, default_level, 2, v...)
 	return _staticLogger()
 }
 
-// Logs are printed at the INFO level
+// Info Logs are printed at the INFO level
 func Info(v ...interface{}) *Logging {
 	_println(LEVEL_INFO, default_level, 2, v...)
 	return _staticLogger()
 }
 
-// Logs are printed at the WARN level
+// Warn Logs are printed at the WARN level
 func Warn(v ...interface{}) *Logging {
 	_println(LEVEL_WARN, default_level, 2, v...)
 	return _staticLogger()
 }
 
-// Logs are printed at the ERROR level
+// Error Logs are printed at the ERROR level
 func Error(v ...interface{}) *Logging {
 	_println(LEVEL_ERROR, default_level, 2, v...)
 	return _staticLogger()
 }
 
-// Logs are printed at the FATAL level
+// Fatal Logs are printed at the FATAL level
 func Fatal(v ...interface{}) *Logging {
 	_println(LEVEL_FATAL, default_level, 2, v...)
 	return _staticLogger()
@@ -320,9 +320,9 @@ func (t *Logging) WriteBin(bs []byte) (bakfn string, err error) {
 			bakfn, err, openFileErr = t.backUp()
 		}
 		if openFileErr == nil {
-			t._rwLock.RLock()
+			t._rwLock.Lock()
 			_, err = t._filehandler.write2file(bs)
-			t._rwLock.RUnlock()
+			t._rwLock.Unlock()
 		}
 	} else {
 		err = errors.New("no log file found")
@@ -336,9 +336,9 @@ func (t *Logging) Write(bs []byte) (n int, err error) {
 			_, err, openFileErr = t.backUp()
 		}
 		if openFileErr == nil {
-			t._rwLock.RLock()
+			t._rwLock.Lock()
 			n, err = t._filehandler.write2file(bs)
-			t._rwLock.RUnlock()
+			t._rwLock.Unlock()
 		}
 	} else {
 		err = errors.New("no log file found")
@@ -511,7 +511,12 @@ func (t *Logging) SetOption(option *Option) *Logging {
 				go t.ticker(func() {
 					defer catchError()
 					if t._filehandler.mustBackUp() {
-						t.backUp()
+						_, renameErr, openFileErr := t.backUp()
+						for _, _err := range []error{renameErr, openFileErr} {
+							if _err != nil {
+								fprintln(t._format, LEVEL_ERROR, LEVEL_ERROR, 1, nil, "fail to backUp: ", _err.Error())
+							}
+						}
 					}
 				})
 			}
@@ -558,14 +563,14 @@ func (t *Logging) println(_level _LEVEL, calldepth int, v ...interface{}) {
 			if t._format != FORMAT_NANO {
 				bs := fmt.Append([]byte{}, v...)
 				buf := getOutBuffer(bs, getlevelname(_level, t._format), t._format, k1(calldepth), &t._formatter)
-				t._rwLock.RLock()
+				t._rwLock.Lock()
 				t._filehandler.write2file(buf.Bytes())
-				t._rwLock.RUnlock()
+				t._rwLock.Unlock()
 				buf.Free()
 			} else {
-				t._rwLock.RLock()
+				t._rwLock.Lock()
 				t._filehandler.write2file(fmt.Appendln([]byte{}, v...))
-				t._rwLock.RUnlock()
+				t._rwLock.Unlock()
 			}
 		}
 	}
@@ -597,7 +602,7 @@ func (t *fileHandler) openFileHandler() (e error) {
 	if e != nil {
 		return
 	}
-	fname := t._fileDir + "/" + t._fileName
+	fname := filepath.Join(t._fileDir, t._fileName)
 	t._fileHandle, e = os.OpenFile(fname, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 	if e != nil {
 		fprintln(default_format, LEVEL_ERROR, LEVEL_ERROR, 1, nil, e.Error())
@@ -649,8 +654,8 @@ func (t *fileHandler) rename() (bckupfilename string, err error) {
 		bckupfilename, err = getBackupRollFileName(t._fileDir, t._fileName, t._gzip)
 	}
 	if bckupfilename != "" && err == nil {
-		oldPath := t._fileDir + "/" + t._fileName
-		newPath := t._fileDir + "/" + bckupfilename
+		oldPath := filepath.Join(t._fileDir, t._fileName)
+		newPath := filepath.Join(t._fileDir, bckupfilename)
 		if err = os.Rename(oldPath, newPath); err == nil {
 			go func() {
 				defer catchError()
@@ -738,11 +743,11 @@ func getBackupDayliFileName(unixTimestamp int64, dir, filename string, mode _MOD
 	suffix := filename[index:]
 	bckupfilename = fmt.Sprint(fname, "_", timeStr, suffix)
 	if isGzip {
-		if isFileExist(fmt.Sprint(dir, "/", bckupfilename, ".gz")) {
+		if isFileExist(fmt.Sprint(filepath.Join(dir, bckupfilename), ".gz")) {
 			bckupfilename = _getBackupfilename(1, dir, fmt.Sprint(fname, "_", timeStr), suffix, isGzip)
 		}
 	} else {
-		if isFileExist(fmt.Sprint(dir, "/", bckupfilename)) {
+		if isFileExist(fmt.Sprint(filepath.Join(dir, bckupfilename))) {
 			bckupfilename = _getBackupfilename(1, dir, fmt.Sprint(fname, "_", timeStr), suffix, isGzip)
 		}
 	}
@@ -787,11 +792,11 @@ func getBackupRollFileName(dir, filename string, isGzip bool) (bckupfilename str
 func _getBackupfilename(count int, dir, filename, suffix string, isGzip bool) (bckupfilename string) {
 	bckupfilename = fmt.Sprint(filename, "_", count, suffix)
 	if isGzip {
-		if isFileExist(fmt.Sprint(dir, "/", bckupfilename, ".gz")) {
+		if isFileExist(fmt.Sprint(filepath.Join(dir, bckupfilename), ".gz")) {
 			return _getBackupfilename(count+1, dir, filename, suffix, isGzip)
 		}
 	} else {
-		if isFileExist(fmt.Sprint(dir, "/", bckupfilename)) {
+		if isFileExist(fmt.Sprint(filepath.Join(dir, bckupfilename))) {
 			return _getBackupfilename(count+1, dir, filename, suffix, isGzip)
 		}
 	}
