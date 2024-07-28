@@ -511,12 +511,7 @@ func (t *Logging) SetOption(option *Option) *Logging {
 				go t.ticker(func() {
 					defer catchError()
 					if t._filehandler.mustBackUp() {
-						_, renameErr, openFileErr := t.backUp()
-						for _, _err := range []error{renameErr, openFileErr} {
-							if _err != nil {
-								t.Error("fail to backUp: ", _err.Error())
-							}
-						}
+						t.backUp()
 					}
 				})
 			}
