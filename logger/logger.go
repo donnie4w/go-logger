@@ -320,9 +320,9 @@ func (t *Logging) WriteBin(bs []byte) (bakfn string, err error) {
 			bakfn, err, openFileErr = t.backUp()
 		}
 		if openFileErr == nil {
-			t._rwLock.Lock()
+			t._rwLock.RLock()
 			_, err = t._filehandler.write2file(bs)
-			t._rwLock.Unlock()
+			t._rwLock.RUnlock()
 		}
 	} else {
 		err = errors.New("no log file found")
@@ -336,9 +336,9 @@ func (t *Logging) Write(bs []byte) (n int, err error) {
 			_, err, openFileErr = t.backUp()
 		}
 		if openFileErr == nil {
-			t._rwLock.Lock()
+			t._rwLock.RLock()
 			n, err = t._filehandler.write2file(bs)
-			t._rwLock.Unlock()
+			t._rwLock.RUnlock()
 		}
 	} else {
 		err = errors.New("no log file found")
@@ -563,14 +563,14 @@ func (t *Logging) println(_level _LEVEL, calldepth int, v ...interface{}) {
 			if t._format != FORMAT_NANO {
 				bs := fmt.Append([]byte{}, v...)
 				buf := getOutBuffer(bs, getlevelname(_level, t._format), t._format, k1(calldepth), &t._formatter)
-				t._rwLock.Lock()
+				t._rwLock.RLock()
 				t._filehandler.write2file(buf.Bytes())
-				t._rwLock.Unlock()
+				t._rwLock.RUnlock()
 				buf.Free()
 			} else {
-				t._rwLock.Lock()
+				t._rwLock.RLock()
 				t._filehandler.write2file(fmt.Appendln([]byte{}, v...))
-				t._rwLock.Unlock()
+				t._rwLock.RUnlock()
 			}
 		}
 	}
