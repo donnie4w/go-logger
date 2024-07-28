@@ -514,7 +514,7 @@ func (t *Logging) SetOption(option *Option) *Logging {
 						_, renameErr, openFileErr := t.backUp()
 						for _, _err := range []error{renameErr, openFileErr} {
 							if _err != nil {
-								fprintln(t._format, LEVEL_ERROR, LEVEL_ERROR, 1, nil, "fail to backUp: ", _err.Error())
+								t.Error("fail to backUp: ", _err.Error())
 							}
 						}
 					}
