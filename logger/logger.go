@@ -559,7 +559,7 @@ func (t *Logging) println(_level _LEVEL, calldepth int, v ...interface{}) {
 	if t.customHandler != nil {
 		go func() {
 			defer catchError()
-			go t.customHandler(_level, v)
+			t.customHandler(_level, v)
 		}()
 	}
 
