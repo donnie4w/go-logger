@@ -1,9 +1,11 @@
 package logger
 
 import (
+	"fmt"
 	"log/slog"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 )
@@ -54,17 +56,27 @@ func Test_LogOne(t *testing.T) {
 func BenchmarkSerialLog(b *testing.B) {
 	b.StopTimer()
 	log := NewLogger()
-	log.SetRollingFile(`D:\cfoldTest`, "log1.txt", 100, MB)
+	log.SetRollingFile(`./`, "log1.txt", 100, MB)
 	log.SetConsole(false)
 	// log.SetFormat(FORMAT_NANO)
 	b.StartTimer()
-	for i := 0; i < b.N; i++ {
-		// log.Write([]byte(">>>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
-		log.Debug(i, ">>>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-		// log.Info(i, ">>>bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
-		// log.Warn(i, ">>>cccccccccccccccccccccccccccccccccccc")
-		// log.log.Error(i, ">>>dddddddddddddddddddddddddddddddddddd")
+	wg := sync.WaitGroup{}
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+
+		go func() {
+			for i := 0; i < b.N; i++ {
+				// log.Write([]byte(">>>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
+				log.Debug(i, ">>>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+				// log.Info(i, ">>>bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+				// log.Warn(i, ">>>cccccccccccccccccccccccccccccccccccc")
+				// log.log.Error(i, ">>>dddddddddddddddddddddddddddddddddddd")
+			}
+			wg.Done()
+		}()
 	}
+	wg.Wait()
+
 }
 
 func TestSlog(t *testing.T) {
@@ -95,6 +107,21 @@ func TestOption4time(t *testing.T) {
 
 func TestOption4size(t *testing.T) {
 	SetOption(&Option{Level: LEVEL_DEBUG, Console: true, FileOption: &FileSizeMode{Filename: "testlog.log", Maxsize: 500, Maxbuckup: 3, IsCompress: false}})
+	for i := 0; i < 20; i++ {
+		Debug("bbbbbbbbbb", 222222222)
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+func TestOptionHandler(t *testing.T) {
+	SetOption(&Option{Level: LEVEL_DEBUG, Console: true,
+		FileOption: &FileSizeMode{Filename: "testlog.log", Maxsize: 500, Maxbuckup: 3, IsCompress: false},
+		CustomHandler: func(lc *LogContext) bool {
+			fmt.Println(1)
+			return true
+			//return false
+		},
+	})
 	for i := 0; i < 20; i++ {
 		Debug("bbbbbbbbbb", 222222222)
 		time.Sleep(100 * time.Millisecond)

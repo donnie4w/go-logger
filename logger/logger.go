@@ -470,6 +470,8 @@ func (t *Logging) SetOption(option *Option) *Logging {
 	t._isConsole = option.Console
 	t._format = option.Format
 
+	t.customHandler = option.CustomHandler
+
 	t._level = option.Level
 	if option.FileOption != nil {
 		t._cutmode = option.FileOption.Cutmode()
