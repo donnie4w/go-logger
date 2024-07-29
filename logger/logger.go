@@ -143,6 +143,10 @@ func GetStaticLogger() *Logging {
 	return _staticLogger()
 }
 
+func SetCustomHandler(handler func(level _LEVEL, v ...interface{})) *Logging {
+	return static_lo.SetCustomHandler(handler)
+}
+
 // SetRollingFile when the log file(fileDir+`\`+fileName) exceeds the specified size(maxFileSize), it will be backed up with a specified file name
 // Parameters:
 //   - fileDir   :directory where log files are stored, If it is the current directory, you also can set it to ""
@@ -262,22 +266,23 @@ func getlevelname(level _LEVEL, format _FORMAT) (levelname []byte) {
 
 /*————————————————————————————————————————————————————————————————————————————*/
 type Logging struct {
-	_level       _LEVEL
-	_format      _FORMAT
-	_rwLock      *sync.RWMutex
-	_fileDir     string
-	_fileName    string
-	_maxSize     int64
-	_unit        _UNIT
-	_cutmode     _CUTMODE
-	_mode        _MODE_TIME
-	_filehandler *fileHandler
-	_isFileWell  bool
-	_formatter   string
-	_maxBackup   int
-	_isConsole   bool
-	_gzip        bool
-	_isTicker    int32
+	_level        _LEVEL
+	_format       _FORMAT
+	_rwLock       *sync.RWMutex
+	_fileDir      string
+	_fileName     string
+	_maxSize      int64
+	_unit         _UNIT
+	_cutmode      _CUTMODE
+	_mode         _MODE_TIME
+	_filehandler  *fileHandler
+	_isFileWell   bool
+	_formatter    string
+	_maxBackup    int
+	_isConsole    bool
+	_gzip         bool
+	_isTicker     int32
+	customHandler func(level _LEVEL, v ...interface{})
 }
 
 // return a new log object
@@ -358,6 +363,11 @@ func (t *Logging) SetLevel(level _LEVEL) *Logging {
 
 func (t *Logging) SetFormatter(formatter string) *Logging {
 	t._formatter = formatter
+	return t
+}
+
+func (t *Logging) SetCustomHandler(handler func(level _LEVEL, v ...interface{})) *Logging {
+	t.customHandler = handler
 	return t
 }
 
@@ -546,6 +556,13 @@ func (t *Logging) backUp() (bakfn string, err, openFileErr error) {
 }
 
 func (t *Logging) println(_level _LEVEL, calldepth int, v ...interface{}) {
+	if t.customHandler != nil {
+		go func() {
+			defer catchError()
+			go t.customHandler(_level, v)
+		}()
+	}
+
 	if t._level > _level {
 		return
 	}
