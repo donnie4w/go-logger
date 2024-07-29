@@ -143,10 +143,6 @@ func GetStaticLogger() *Logging {
 	return _staticLogger()
 }
 
-func SetCustomHandler(handler func(level _LEVEL, v ...interface{})) *Logging {
-	return static_lo.SetCustomHandler(handler)
-}
-
 // SetRollingFile when the log file(fileDir+`\`+fileName) exceeds the specified size(maxFileSize), it will be backed up with a specified file name
 // Parameters:
 //   - fileDir   :directory where log files are stored, If it is the current directory, you also can set it to ""
@@ -282,7 +278,7 @@ type Logging struct {
 	_isConsole    bool
 	_gzip         bool
 	_isTicker     int32
-	customHandler func(level _LEVEL, v ...interface{})
+	customHandler func(lc *LogContext) bool
 }
 
 // return a new log object
@@ -363,11 +359,6 @@ func (t *Logging) SetLevel(level _LEVEL) *Logging {
 
 func (t *Logging) SetFormatter(formatter string) *Logging {
 	t._formatter = formatter
-	return t
-}
-
-func (t *Logging) SetCustomHandler(handler func(level _LEVEL, v ...interface{})) *Logging {
-	t.customHandler = handler
 	return t
 }
 
@@ -556,16 +547,19 @@ func (t *Logging) backUp() (bakfn string, err, openFileErr error) {
 }
 
 func (t *Logging) println(_level _LEVEL, calldepth int, v ...interface{}) {
-	if t.customHandler != nil {
-		go func() {
-			defer catchError()
-			t.customHandler(_level, v)
-		}()
-	}
 
 	if t._level > _level {
 		return
 	}
+	// 使用同步，是否使用异步的权限留给开发者，需要异步时，开发者可以在customHandler函数中封装异步调用。
+	// 将执行流程控制权交给customHandler函数。customHandler返回false时，println函数返回，不再执行后续的打印，返回true时，继续执行后续打印。
+	if t.customHandler != nil {
+		defer catchError()
+		if isContinue := t.customHandler(&LogContext{Level: _level, Args: v}); !isContinue {
+			return
+		}
+	}
+
 	if t._isFileWell {
 		var openFileErr error
 		if t._filehandler.mustBackUp() {
