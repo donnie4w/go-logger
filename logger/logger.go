@@ -262,22 +262,23 @@ func getlevelname(level _LEVEL, format _FORMAT) (levelname []byte) {
 
 /*————————————————————————————————————————————————————————————————————————————*/
 type Logging struct {
-	_level       _LEVEL
-	_format      _FORMAT
-	_rwLock      *sync.RWMutex
-	_fileDir     string
-	_fileName    string
-	_maxSize     int64
-	_unit        _UNIT
-	_cutmode     _CUTMODE
-	_mode        _MODE_TIME
-	_filehandler *fileHandler
-	_isFileWell  bool
-	_formatter   string
-	_maxBackup   int
-	_isConsole   bool
-	_gzip        bool
-	_isTicker    int32
+	_level        _LEVEL
+	_format       _FORMAT
+	_rwLock       *sync.RWMutex
+	_fileDir      string
+	_fileName     string
+	_maxSize      int64
+	_unit         _UNIT
+	_cutmode      _CUTMODE
+	_mode         _MODE_TIME
+	_filehandler  *fileHandler
+	_isFileWell   bool
+	_formatter    string
+	_maxBackup    int
+	_isConsole    bool
+	_gzip         bool
+	_isTicker     int32
+	customHandler func(lc *LogContext) bool
 }
 
 // return a new log object
@@ -469,6 +470,8 @@ func (t *Logging) SetOption(option *Option) *Logging {
 	t._isConsole = option.Console
 	t._format = option.Format
 
+	t.customHandler = option.CustomHandler
+
 	t._level = option.Level
 	if option.FileOption != nil {
 		t._cutmode = option.FileOption.Cutmode()
@@ -546,9 +549,18 @@ func (t *Logging) backUp() (bakfn string, err, openFileErr error) {
 }
 
 func (t *Logging) println(_level _LEVEL, calldepth int, v ...interface{}) {
+
 	if t._level > _level {
 		return
 	}
+	// 使用同步，是否使用异步的权限留给开发者，需要异步时，开发者可以在customHandler函数中封装异步调用。
+	// 将执行流程控制权交给customHandler函数。customHandler返回false时，println函数返回，不再执行后续的打印，返回true时，继续执行后续打印。
+	if t.customHandler != nil {
+		if isContinue := t.customHandler(&LogContext{Level: _level, Args: v}); !isContinue {
+			return
+		}
+	}
+
 	if t._isFileWell {
 		var openFileErr error
 		if t._filehandler.mustBackUp() {

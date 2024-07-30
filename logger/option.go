@@ -73,9 +73,15 @@ func (f *FileTimeMode) Compress() bool {
 }
 
 type Option struct {
-	Level      _LEVEL
-	Console    bool
-	Format     _FORMAT
-	Formatter  string
-	FileOption FileOption
+	Level         _LEVEL
+	Console       bool
+	Format        _FORMAT
+	Formatter     string
+	FileOption    FileOption
+	CustomHandler func(lc *LogContext) bool
+}
+
+type LogContext struct {
+	Level _LEVEL
+	Args  []any
 }
