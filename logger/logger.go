@@ -556,7 +556,6 @@ func (t *Logging) println(_level _LEVEL, calldepth int, v ...interface{}) {
 	// 使用同步，是否使用异步的权限留给开发者，需要异步时，开发者可以在customHandler函数中封装异步调用。
 	// 将执行流程控制权交给customHandler函数。customHandler返回false时，println函数返回，不再执行后续的打印，返回true时，继续执行后续打印。
 	if t.customHandler != nil {
-		defer catchError()
 		if isContinue := t.customHandler(&LogContext{Level: _level, Args: v}); !isContinue {
 			return
 		}
