@@ -14,16 +14,16 @@ import (
 func Test_Log(t *testing.T) {
 	SetRollingDaily(`D:\cfoldTest`, "log2.txt")
 	// SetConsole(false)
-	Debug("11111111111111")
-	Info("22222222")
+	Debug("this is debug message")
+	Info("this is info message")
 	SetFormat(FORMAT_DATE | FORMAT_SHORTFILENAME) //设置后，下面日志格式只打印日期+短文件信息
-	Warn("333333333")
+	Warn("this is warning message")
 	// SetLevel(FATAL) //设置为FATAL后，下面Error()级别小于FATAL,将不打印出来
-	Error("444444444")
+	Error("this is error message")
 	SetFormat(FORMAT_LEVELFLAG | FORMAT_DATE | FORMAT_MICROSECNDS | FORMAT_SHORTFILENAME)
 	SetFormatter("{message}|{level} {time} {file}\n")
 	// SetFormat(FORMAT_NANO)
-	Fatal("5555555555")
+	Fatal("this is fatal message")
 }
 
 /*设置日志文件*/
@@ -42,14 +42,14 @@ func Test_LogOne(t *testing.T) {
 	log.SetLevel(OFF) 设置OFF后，将不再打印后面的日志 默认日志级别为ALL，打印级别*/
 	/* 日志写入文件时，同时在控制台打印出来，设置为false后将不打印在控制台，默认值true*/
 	// log.SetConsole(false)
-	log.Debug("aaaaaaaaaaaaaaaaaaaaaaaa")
+	log.Debug("this is debug message")
 	log.SetFormat(FORMAT_LONGFILENAME) //设置后将打印出文件全部路径信息
-	log.Info("bbbbbbbbbbbbbbbbbbbbbbbb")
+	log.Info("this is info message")
 	log.SetFormat(FORMAT_MICROSECNDS | FORMAT_SHORTFILENAME) //设置日志格式，时间+短文件名
-	log.Warn("ccccccccccccccccccccccc")
+	log.Warn("this is warning message")
 	log.SetLevel(LEVEL_FATAL) //设置为FATAL后，下面Error()级别小于FATAL,将不打印出来
-	log.Error("ddddddddddddddddddddddd")
-	log.Fatal("eeeeeeeeeeeeeeeeeeeeeee")
+	log.Error("this is error message")
+	log.Fatal("this is fatal message")
 	time.Sleep(2 * time.Second)
 }
 
@@ -67,10 +67,10 @@ func BenchmarkSerialLog(b *testing.B) {
 		go func() {
 			for i := 0; i < b.N; i++ {
 				// log.Write([]byte(">>>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
-				log.Debug(i, ">>>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-				// log.Info(i, ">>>bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
-				// log.Warn(i, ">>>cccccccccccccccccccccccccccccccccccc")
-				// log.log.Error(i, ">>>dddddddddddddddddddddddddddddddddddd")
+				log.Debug(i, ">>>this is debug message")
+				// log.Info(i, ">>>this is info message")
+				// log.Warn(i, ">>>this is warm message")
+				// log.log.Error(i, ">>>this is error message")
 			}
 			wg.Done()
 		}()
@@ -92,15 +92,15 @@ func TestSlog(t *testing.T) {
 	h := slog.NewJSONHandler(loggingFile, &slog.HandlerOptions{AddSource: true, ReplaceAttr: replace})
 	log := slog.New(h)
 	for i := 0; i < 1000; i++ {
-		log.Info(">>>aaaaaaaaaaaaaaaaaaaaaaa:" + strconv.Itoa(i))
+		log.Info("this is a info message:" + strconv.Itoa(i))
 	}
 }
 
 func TestOption4time(t *testing.T) {
 	SetOption(&Option{Level: LEVEL_INFO, Console: true, FileOption: &FileTimeMode{Filename: "testlogtime.log", Maxbuckup: 3, IsCompress: false, Timemode: MODE_MONTH}})
 	for i := 0; i < 100; i++ {
-		Debug("aaaaaaaaaa", 1111111111111111111)
-		Info("bbbbbbbbbb", 2222222222222222222)
+		Debug("this is a debug message", 1111111111111111111)
+		Info("this is a info message", 2222222222222222222)
 		time.Sleep(2 * time.Second)
 	}
 }
@@ -108,22 +108,71 @@ func TestOption4time(t *testing.T) {
 func TestOption4size(t *testing.T) {
 	SetOption(&Option{Level: LEVEL_DEBUG, Console: true, FileOption: &FileSizeMode{Filename: "testlog.log", Maxsize: 500, Maxbuckup: 3, IsCompress: false}})
 	for i := 0; i < 20; i++ {
-		Debug("bbbbbbbbbb", 222222222)
+		Debug("this is a debug message", 1111111111111111111)
 		time.Sleep(100 * time.Millisecond)
 	}
 }
 
-func TestOptionHandler(t *testing.T) {
-	SetOption(&Option{Level: LEVEL_DEBUG, Console: true,
-		FileOption: &FileSizeMode{Filename: "testlog.log", Maxsize: 500, Maxbuckup: 3, IsCompress: false},
-		CustomHandler: func(lc *LogContext) bool {
-			fmt.Println(1)
-			return true
-			//return false
-		},
+func TestCustomHandler(t *testing.T) {
+	SetOption(&Option{Console: true, CustomHandler: func(lc *LogContext) bool {
+		fmt.Println("level:", levelname(lc.Level))
+		fmt.Println("message:", fmt.Sprint(lc.Args...))
+		if lc.Level == LEVEL_ERROR {
+			return false //if error mesaage , do not print
+		}
+		return true
+	},
 	})
-	for i := 0; i < 20; i++ {
-		Debug("bbbbbbbbbb", 222222222)
-		time.Sleep(100 * time.Millisecond)
+	Debug("this is a debug message")
+	Info("this is a info message")
+	Warn("this is a warn message")
+	Error("this is a error message")
+}
+
+func levelname(level _LEVEL) string {
+	switch level {
+	case LEVEL_DEBUG:
+		return "debug"
+	case LEVEL_INFO:
+		return "info"
+	case LEVEL_FATAL:
+		return "fatal"
+	case LEVEL_WARN:
+		return "warn"
+	case LEVEL_ERROR:
+		return "error"
+	default:
+		return "unknown"
 	}
+}
+
+func TestStacktrace(t *testing.T) {
+	SetOption(&Option{Console: true, Stacktrace: LEVEL_WARN, Format: FORMAT_LEVELFLAG | FORMAT_DATE | FORMAT_TIME | FORMAT_SHORTFILENAME | FORMAT_FUNC})
+	Debug("this is a debug message")
+	Stacktrace1()
+}
+
+func Stacktrace1() {
+	Info("this is a info message")
+	Stacktrace2()
+}
+
+func Stacktrace2() {
+	Warn("this is a warn message")
+	Stacktrace3()
+}
+
+func Stacktrace3() {
+	Error("this is a error message")
+	Fatal("this is a fatal message")
+}
+
+func TestLevelOptions(t *testing.T) {
+	SetLevelOption(LEVEL_DEBUG, &LevelOption{Format: FORMAT_LEVELFLAG | FORMAT_TIME | FORMAT_SHORTFILENAME})
+	SetLevelOption(LEVEL_INFO, &LevelOption{Format: FORMAT_LEVELFLAG})
+	SetLevelOption(LEVEL_WARN, &LevelOption{Format: FORMAT_LEVELFLAG | FORMAT_TIME | FORMAT_SHORTFILENAME | FORMAT_DATE | FORMAT_FUNC})
+
+	Debug("this is a debug message")
+	Info("this is a info message")
+	Warn("this is a warn message")
 }
