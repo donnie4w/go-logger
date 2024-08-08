@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	VERSION string = "0.25.3"
+	VERSION string = "0.26.0"
 )
 
 type _LEVEL int8
@@ -42,8 +42,6 @@ const _DATEFORMAT_MONTH = "200601"
 const default_format = FORMAT_LEVELFLAG | FORMAT_SHORTFILENAME | FORMAT_DATE | FORMAT_TIME
 const default_level = LEVEL_ALL
 const default_formatter = "{level}{time} {file}:{message}\n"
-
-var static_mu = new(sync.Mutex)
 
 var static_lo = NewLogger()
 
@@ -64,70 +62,108 @@ const (
 )
 
 const (
-	/*无其他格式，只打印日志内容*/ /*no format, Only log content is printed*/
-	FORMAT_NANO       _FORMAT = 64
+	// FORMAT_NANO
+	//
+	// no format, Only log content is printed
+	// 无其他格式，只打印日志内容
+	FORMAT_NANO _FORMAT = 64
 
-	/*长文件名(文件绝对路径)及行数*/ /*full file name and line number*/
+	// FORMAT_LONGFILENAME
+	//
+	// full file name and line number
+	// 长文件名(文件绝对路径)及行数
 	FORMAT_LONGFILENAME = _FORMAT(8)
 
-	/*短文件名及行数*/          /*final file name element and line number*/
+	// FORMAT_SHORTFILENAME
+	//
+	// final file name element and line number
+	// 短文件名及行数
 	FORMAT_SHORTFILENAME = _FORMAT(16)
 
-	/*日期时间精确到天*/ /*the date in the local time zone: 2009/01/23*/
-	FORMAT_DATE  = _FORMAT(1)
+	// FORMAT_DATE
+	//
+	// the date in the local time zone: 2009/01/23
+	// 日期时间精确到天
+	FORMAT_DATE = _FORMAT(1)
 
-	/*时间精确到秒*/  /*the time in the local time zone: 01:23:23*/
+	// FORMAT_TIME
+	//
+	// the time in the local time zone: 01:23:23
+	// 时间精确到秒
 	FORMAT_TIME = _FORMAT(2)
 
-	/*时间精确到微秒*/        /*microsecond resolution: 01:23:23.123123.*/
+	// FORMAT_MICROSECNDS
+	//
+	// microsecond resolution: 01:23:23.123123.
+	// 时间精确到微秒
 	FORMAT_MICROSECNDS = _FORMAT(4)
 
-	/*日志级别表示*/       /*Log level flag. e.g. [DEBUG],[INFO],[WARN],[ERROR],[FATAL]*/
+	// FORMAT_LEVELFLAG
+	//
+	//Log level flag. e.g. [DEBUG],[INFO],[WARN],[ERROR],[FATAL]
+	// 日志级别表示
 	FORMAT_LEVELFLAG = _FORMAT(32)
+
+	// FORMAT_FUNC
+	//
+	// the func of caller
+	// 调用的函数名
+	FORMAT_FUNC = _FORMAT(128)
 )
 
 const (
-	/*日志级别：ALL 最低级别*/ /*Log level: LEVEL_ALL is the lowest level,If the log level is this level, logs of other levels can be printed*/
-	LEVEL_ALL         _LEVEL = iota
 
-	/*日志级别：DEBUG 小于INFO*/ /*Log level: ALL<DEBUG<INFO*/
+	// LEVEL_ALL is the lowest level,If the log level is this level, logs of other levels can be printed
+	// 日志级别：ALL 打印所有日志
+	LEVEL_ALL _LEVEL = iota
+
+	// LEVEL_DEBUG  debug log level
+	// 日志级别：DEBUG 小于INFO
 	LEVEL_DEBUG
 
-	/*日志级别：INFO 小于 WARN*/ /*Log level: DEBUG<INFO<WARN*/
+	// LEVEL_INFO info log level
+	// 日志级别：INFO 小于 WARN
 	LEVEL_INFO
 
-	/*日志级别：WARN 小于 ERROR*/ /*Log level: INFO<WARN<ERROR*/
+	// LEVEL_WARN warn log level
+	// 日志级别：WARN 小于 ERROR
 	LEVEL_WARN
 
-	/*日志级别：ERROR 小于 FATAL*/ /*Log level: WARN<ERROR<FATAL*/
+	// LEVEL_ERROR error log level
+	// 日志级别：ERROR 小于 FATAL
 	LEVEL_ERROR
 
-	/*日志级别：FATAL 小于 OFF*/ /*Log level: ERROR<FATAL<OFF*/
+	// LEVEL_FATAL fatal log level
+	// 日志级别：FATAL 小于 OFF
 	LEVEL_FATAL
 
-	/*日志级别：off 不打印任何日志*/ /*Log level: LEVEL_OFF means none of the logs can be printed*/
+	// LEVEL_OFF  means none of the logs can be printed
+	// 日志级别：off 不打印任何日志
 	LEVEL_OFF
 )
 
-var DEBUGNAME, INFONAME, WARNNAME, ERRORNAME, FATALNAME = []byte("[DEBUG]"), []byte("[INFO]"), []byte("[WARN]"), []byte("[ERROR]"), []byte("[FATAL]")
+var _DEBUG, _INFO, _WARN, _ERROR, _FATALE = []byte("[DEBUG]"), []byte("[INFO]"), []byte("[WARN]"), []byte("[ERROR]"), []byte("[FATAL]")
 
 const (
 	_TIMEMODE _CUTMODE = 1
 	_SIZEMODE _CUTMODE = 2
 )
 
-// SetFormat /*设置打印格式*/
+// SetFormat
+// 设置打印格式
 func SetFormat(format _FORMAT) *Logging {
 	return static_lo.SetFormat(format)
 }
 
-// SetLevel /*设置控制台日志级别，默认ALL*/
+// SetLevel
 // Setting the log Level
+// 设置控制台日志级别，默认ALL
 func SetLevel(level _LEVEL) *Logging {
 	return static_lo.SetLevel(level)
 }
 
-// SetFormatter /*设置输出格式，默认: "{level}{time} {file}:{message}\n" */
+// SetFormatter
+// 设置输出格式，默认: "{level}{time} {file}:{message}\n"
 func SetFormatter(formatter string) *Logging {
 	return static_lo.SetFormatter(formatter)
 }
@@ -138,7 +174,9 @@ func SetConsole(on bool) *Logging {
 
 }
 
-/*获得全局Logger对象*/ /*return the default log object*/
+// GetStaticLogger
+// return the default log object
+// 获得全局Logger对象
 func GetStaticLogger() *Logging {
 	return _staticLogger()
 }
@@ -233,62 +271,63 @@ func _println(level, _default_level _LEVEL, calldepth int, v ...interface{}) {
 	_staticLogger().println(level, k1(calldepth), v...)
 }
 
-func fprintln(_format _FORMAT, level, _ _LEVEL, calldepth int, formatter *string, v ...interface{}) {
-	_console(fmt.Append([]byte{}, v...), getlevelname(level, default_format), _format, k1(calldepth), formatter)
+func fprintln(_format _FORMAT, level, stacktrace _LEVEL, calldepth int, formatter *string, v ...interface{}) {
+	_console(fmt.Append([]byte{}, v...), level, stacktrace, _format, k1(calldepth), formatter)
 }
 
-func getlevelname(level _LEVEL, format _FORMAT) (levelname []byte) {
-	if format == FORMAT_NANO {
-		return
-	}
+func getlevelname(level _LEVEL) (levelname []byte) {
 	switch level {
 	case LEVEL_ALL:
 		levelname = []byte("ALL")
 	case LEVEL_DEBUG:
-		levelname = DEBUGNAME
+		levelname = _DEBUG
 	case LEVEL_INFO:
-		levelname = INFONAME
+		levelname = _INFO
 	case LEVEL_WARN:
-		levelname = WARNNAME
+		levelname = _WARN
 	case LEVEL_ERROR:
-		levelname = ERRORNAME
+		levelname = _ERROR
 	case LEVEL_FATAL:
-		levelname = FATALNAME
+		levelname = _FATALE
 	default:
-		levelname = []byte("")
+		levelname = []byte{}
 	}
 	return
 }
 
-/*————————————————————————————————————————————————————————————————————————————*/
+// Logging is the primary data structure for configuring and managing logging behavior.
 type Logging struct {
-	_level        _LEVEL
-	_format       _FORMAT
-	_rwLock       *sync.RWMutex
-	_fileDir      string
-	_fileName     string
-	_maxSize      int64
-	_unit         _UNIT
-	_cutmode      _CUTMODE
-	_mode         _MODE_TIME
-	_filehandler  *fileHandler
-	_isFileWell   bool
-	_formatter    string
-	_maxBackup    int
-	_isConsole    bool
-	_gzip         bool
-	_isTicker     int32
-	customHandler func(lc *LogContext) bool
+	_level        _LEVEL                    // Log level, e.g., DEBUG, INFO, WARN, ERROR, etc.
+	_format       _FORMAT                   // Log format.
+	_rwLock       *sync.RWMutex             // Read-write lock for concurrent safe access to the logging struct.
+	_fileDir      string                    // Directory path where log files are stored.
+	_fileName     string                    // Base name of the log file.
+	_maxSize      int64                     // Maximum size of a single log file.
+	_unit         _UNIT                     // Size unit, e.g., Byte, KB, MB, etc.
+	_cutmode      _CUTMODE                  // Log file cutting mode, e.g., by size or by time.
+	_mode         _MODE_TIME                // Time-based rolling mode for log files, e.g., daily, weekly, etc.
+	_filehandler  *fileHandler              // File handler for operations on log files.
+	_isFileWell   bool                      // Indicates whether the log file is in good condition.
+	_formatter    string                    // Formatting string for customizing the log output format.
+	_maxBackup    int                       // Maximum number of backup log files to keep.
+	_isConsole    bool                      // Whether to also output logs to the console.
+	_gzip         bool                      // Whether to enable GZIP compression for old log files.
+	_isTicker     int32                     // Whether to enable a ticker to periodically check the log file status.
+	stacktrace    _LEVEL                    // Log level, e.g., DEBUG, INFO, WARN, ERROR, etc.
+	customHandler func(lc *LogContext) bool // Custom log handler function allowing users to define additional log processing logic.
+	leveloption   [5]*LevelOption
 }
 
-// return a new log object
+// NewLogger creates and returns a new instance of the Logging struct.
+// This function initializes a Logging object with default values or specific configurations as needed.
 func NewLogger() (log *Logging) {
 	log = &Logging{_level: default_level, _cutmode: _TIMEMODE, _rwLock: new(sync.RWMutex), _format: default_format, _isConsole: true, _formatter: default_formatter}
 	log.newfileHandler()
 	return
 }
 
-// 控制台日志是否打开
+// SetConsole sets the flag to determine whether log messages should also be output to the console.
+// This method modifies the _isConsole field of the Logging struct and returns a pointer to the Logging instance for method chaining.
 func (t *Logging) SetConsole(_isConsole bool) *Logging {
 	t._isConsole = _isConsole
 	return t
@@ -362,29 +401,27 @@ func (t *Logging) SetFormatter(formatter string) *Logging {
 	return t
 }
 
-/*
-按日志文件大小分割日志文件
-fileDir 日志文件夹路径
-fileName 日志文件名
-maxFileSize  日志文件大小最大值
-unit    日志文件大小单位
-*/
+// SetRollingFile
 // Deprecated
 // Use SeOption() instead.
+// 按日志文件大小分割日志文件
+// fileDir 日志文件夹路径
+// fileName 日志文件名
+// maxFileSize  日志文件大小最大值
+// unit    日志文件大小单位
 func (t *Logging) SetRollingFile(fileDir, fileName string, maxFileSize int64, unit _UNIT) (l *Logging, err error) {
 	return t.SetRollingFileLoop(fileDir, fileName, maxFileSize, unit, 0)
 }
 
-/*
-按日志文件大小分割日志文件，指定保留的最大日志文件数
-fileDir 日志文件夹路径
-fileName 日志文件名
-maxFileSize  日志文件大小最大值
-unit    	日志文件大小单位
-maxFileNum  留的日志文件数
-*/
+// SetRollingFileLoop
 // Deprecated
 // Use SeOption() instead.
+// 按日志文件大小分割日志文件，指定保留的最大日志文件数
+// fileDir 日志文件夹路径
+// fileName 日志文件名
+// maxFileSize  日志文件大小最大值
+// unit    	日志文件大小单位
+// maxFileNum  留的日志文件数
 func (t *Logging) SetRollingFileLoop(fileDir, fileName string, maxFileSize int64, unit _UNIT, maxBackup int) (l *Logging, err error) {
 	t._rwLock.Lock()
 	defer t._rwLock.Unlock()
@@ -403,25 +440,23 @@ func (t *Logging) SetRollingFileLoop(fileDir, fileName string, maxFileSize int64
 	return t, err
 }
 
-/*
-按日期分割日志文件
-fileDir 日志文件夹路径
-fileName 日志文件名
-*/
+// SetRollingDaily
 // Deprecated
 // Use SeOption() instead.
+// 按日期分割日志文件
+// fileDir 日志文件夹路径
+// fileName 日志文件名
 func (t *Logging) SetRollingDaily(fileDir, fileName string) (l *Logging, err error) {
 	return t.SetRollingByTime(fileDir, fileName, MODE_DAY)
 }
 
-/*
-指定按 小时，天，月 分割日志文件
-fileDir 日志文件夹路径
-fileName 日志文件名
-mode   指定 小时，天，月
-*/
+// SetRollingByTime
 // Deprecated
 // Use SeOption() instead.
+// 指定按 小时，天，月 分割日志文件
+// fileDir 日志文件夹路径
+// fileName 日志文件名
+// mode   指定 小时，天，月
 func (t *Logging) SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (l *Logging, err error) {
 	t._rwLock.Lock()
 	defer t._rwLock.Unlock()
@@ -446,6 +481,7 @@ func (t *Logging) SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (l
 	return t, err
 }
 
+// SetGzipOn
 // Deprecated
 // Use SeOption() instead.
 func (t *Logging) SetGzipOn(is bool) *Logging {
@@ -456,7 +492,8 @@ func (t *Logging) SetGzipOn(is bool) *Logging {
 	return t
 }
 
-// config object
+// SetOption applies the configuration options specified in the Option struct to the Logging instance.
+// This method updates the fields of the Logging struct according to the provided Option and returns a pointer to the Logging instance for method chaining.
 func (t *Logging) SetOption(option *Option) *Logging {
 	t._rwLock.Lock()
 	defer t._rwLock.Unlock()
@@ -471,7 +508,7 @@ func (t *Logging) SetOption(option *Option) *Logging {
 	t._format = option.Format
 
 	t.customHandler = option.CustomHandler
-
+	t.stacktrace = option.Stacktrace
 	t._level = option.Level
 	if option.FileOption != nil {
 		t._cutmode = option.FileOption.Cutmode()
@@ -535,32 +572,26 @@ func (t *Logging) backUp() (bakfn string, err, openFileErr error) {
 		return
 	}
 	if err = t._filehandler.close(); err != nil {
-		fprintln(t._format, LEVEL_ERROR, LEVEL_ERROR, 1, nil, err.Error())
+		fprintln(t._format, LEVEL_ERROR, t.stacktrace, 1, nil, err.Error())
 		return
 	}
 	if bakfn, err = t._filehandler.rename(); err != nil {
-		fprintln(t._format, LEVEL_ERROR, LEVEL_ERROR, 1, nil, err.Error())
+		fprintln(t._format, LEVEL_ERROR, t.stacktrace, 1, nil, err.Error())
 		return
 	}
 	if openFileErr = t._filehandler.openFileHandler(); openFileErr != nil {
-		fprintln(t._format, LEVEL_ERROR, LEVEL_ERROR, 1, nil, openFileErr.Error())
+		fprintln(t._format, LEVEL_ERROR, t.stacktrace, 1, nil, openFileErr.Error())
 	}
 	return
 }
 
 func (t *Logging) println(_level _LEVEL, calldepth int, v ...interface{}) {
-
 	if t._level > _level {
 		return
 	}
-	// 使用同步，是否使用异步的权限留给开发者，需要异步时，开发者可以在customHandler函数中封装异步调用。
-	// 将执行流程控制权交给customHandler函数。customHandler返回false时，println函数返回，不再执行后续的打印，返回true时，继续执行后续打印。
-	if t.customHandler != nil {
-		if isContinue := t.customHandler(&LogContext{Level: _level, Args: v}); !isContinue {
-			return
-		}
+	if t.customHandler != nil && !t.customHandler(&LogContext{Level: _level, Args: v}) {
+		return
 	}
-
 	if t._isFileWell {
 		var openFileErr error
 		if t._filehandler.mustBackUp() {
@@ -569,7 +600,12 @@ func (t *Logging) println(_level _LEVEL, calldepth int, v ...interface{}) {
 		if openFileErr == nil {
 			if t._format != FORMAT_NANO {
 				bs := fmt.Append([]byte{}, v...)
-				buf := getOutBuffer(bs, getlevelname(_level, t._format), t._format, k1(calldepth), &t._formatter)
+				var buf *buffer.Buffer
+				if ol := t.leveloption[_level-1]; ol != nil {
+					buf = getOutBuffer(bs, _level, ol.Format, k1(calldepth), &ol.Formatter, t.stacktrace)
+				} else {
+					buf = getOutBuffer(bs, _level, t._format, k1(calldepth), &t._formatter, t.stacktrace)
+				}
 				t._rwLock.RLock()
 				t._filehandler.write2file(buf.Bytes())
 				t._rwLock.RUnlock()
@@ -582,8 +618,24 @@ func (t *Logging) println(_level _LEVEL, calldepth int, v ...interface{}) {
 		}
 	}
 	if t._isConsole {
-		fprintln(t._format, _level, t._level, k1(calldepth), &t._formatter, v...)
+		if ol := t.leveloption[_level-1]; ol != nil {
+			fprintln(ol.Format, _level, t.stacktrace, k1(calldepth), &ol.Formatter, v...)
+		} else {
+			fprintln(t._format, _level, t.stacktrace, k1(calldepth), &t._formatter, v...)
+		}
+
 	}
+}
+
+func SetLevelOption(level _LEVEL, option *LevelOption) *Logging {
+	return _staticLogger().SetLevelOption(level, option)
+}
+
+func (t *Logging) SetLevelOption(level _LEVEL, option *LevelOption) *Logging {
+	if level > LEVEL_ALL && level < LEVEL_OFF {
+		t.leveloption[level-1] = option
+	}
+	return t
 }
 
 type fileHandler struct {
@@ -612,7 +664,7 @@ func (t *fileHandler) openFileHandler() (e error) {
 	fname := filepath.Join(t._fileDir, t._fileName)
 	t._fileHandle, e = os.OpenFile(fname, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 	if e != nil {
-		fprintln(default_format, LEVEL_ERROR, LEVEL_ERROR, 1, nil, e.Error())
+		fprintln(default_format, LEVEL_ERROR, 0, 1, nil, e.Error())
 		return
 	}
 	if fs, err := t._fileHandle.Stat(); err == nil {
@@ -815,9 +867,9 @@ func _write2file(f *os.File, bs []byte) (n int, e error) {
 	return
 }
 
-func _console(s []byte, levelname []byte, flag _FORMAT, calldepth int, formatter *string) {
+func _console(s []byte, level, stacktrace _LEVEL, flag _FORMAT, calldepth int, formatter *string) {
 	if flag != FORMAT_NANO {
-		buf := getOutBuffer(s, levelname, flag, k1(calldepth), formatter)
+		buf := getOutBuffer(s, level, flag, k1(calldepth), formatter, stacktrace)
 		fmt.Print(string(buf.Bytes()))
 		buf.Free()
 	} else {
@@ -829,8 +881,8 @@ func k1(calldepth int) int {
 	return calldepth + 1
 }
 
-func getOutBuffer(s []byte, levelname []byte, format _FORMAT, calldepth int, formatter *string) *buffer.Buffer {
-	return output(format, k1(calldepth), s, levelname, formatter)
+func getOutBuffer(s []byte, level _LEVEL, format _FORMAT, calldepth int, formatter *string, stacktrace _LEVEL) *buffer.Buffer {
+	return output(format, k1(calldepth), s, level, formatter, stacktrace)
 }
 
 func mkdirDir(dir string) (e error) {
@@ -922,26 +974,15 @@ func lgzip(gzfile, gzname, srcfile string) (err error) {
 
 var m = hashmap.NewLimitMap[any, runtime.Frame](1 << 13)
 
-func output(flag _FORMAT, calldepth int, s []byte, levelname []byte, formatter *string) (buf *buffer.Buffer) {
-	now := _time()
-	var file *string
-	var line *int
+func output(flag _FORMAT, calldepth int, s []byte, level _LEVEL, formatter *string, stacktrace _LEVEL) (buf *buffer.Buffer) {
+	var callstack *callStack
 	if flag&(FORMAT_SHORTFILENAME|FORMAT_LONGFILENAME) != 0 {
-		var pcs [1]uintptr
-		runtime.Callers(calldepth+1, pcs[:])
-		var f runtime.Frame
-		var ok bool
-		if f, ok = m.Get(pcs); !ok {
-			f, _ = runtime.CallersFrames([]uintptr{pcs[0]}).Next()
-			m.Put(pcs, f)
-		}
-		file = &f.File
-		line = &f.Line
+		callstack = collectCallStack(k1(calldepth), flag&FORMAT_FUNC != 0, callstack, stacktrace > LEVEL_ALL && stacktrace <= level)
 	}
-	return formatmsg(s, now, file, line, flag, levelname, formatter)
+	return formatmsg(s, _time(), callstack, flag, level, formatter)
 }
 
-func formatmsg(msg []byte, t time.Time, file *string, line *int, flag _FORMAT, levelname []byte, formatter *string) (buf *buffer.Buffer) {
+func formatmsg(msg []byte, t time.Time, callstack *callStack, flag _FORMAT, level _LEVEL, formatter *string) (buf *buffer.Buffer) {
 	buf = buffer.NewBufferByPool()
 	var levelbuf *buffer.Buffer
 	var timebuf *buffer.Buffer
@@ -955,7 +996,7 @@ func formatmsg(msg []byte, t time.Time, file *string, line *int, flag _FORMAT, l
 		filebuf = buffer.NewBuffer()
 	}
 	if flag&FORMAT_LEVELFLAG != 0 {
-		levelbuf.Write(levelname)
+		levelbuf.Write(getlevelname(level))
 	}
 	if flag&(FORMAT_DATE|FORMAT_TIME|FORMAT_MICROSECNDS) != 0 {
 		if flag&FORMAT_DATE != 0 {
@@ -984,20 +1025,9 @@ func formatmsg(msg []byte, t time.Time, file *string, line *int, flag _FORMAT, l
 		}
 	}
 	if flag&(FORMAT_SHORTFILENAME|FORMAT_LONGFILENAME) != 0 {
-		if flag&FORMAT_SHORTFILENAME != 0 {
-			short := *file
-			for i := len(*file) - 1; i > 0; i-- {
-				if (*file)[i] == '/' {
-					short = (*file)[i+1:]
-					break
-				}
-			}
-			file = &short
+		if callstack != nil {
+			callstack.Pop(flag, filebuf)
 		}
-		filebuf.Write([]byte(*file))
-		filebuf.WriteByte(':')
-		itoa(filebuf, *line, -1)
-
 		if is_default_formatter {
 			filebuf.WriteByte(' ')
 		}
