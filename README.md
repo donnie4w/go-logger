@@ -311,42 +311,106 @@ func TestLevelOptions(t *testing.T) {
 ```go
 [DEBUG]18:53:55 logging_test.go:176 this is a debug message
 [INFO]this is a info message
-[WARN]2024/08/07 18:53:55 logging_test.go:TestLevelOptions:178 this is a warn message```
+[WARN]2024/08/07 18:53:55 logging_test.go:TestLevelOptions:178 this is a warn message
 ```
 ------
 
 #### 性能测试：
 
-###### 测试说明
+```go
+cpu: Intel(R) Core(TM) i5-1035G1 CPU @ 1.00GHz
+BenchmarkSerialZap
+BenchmarkSerialZap-4                      714796              5469 ns/op             336 B/op          6 allocs/op
+BenchmarkSerialZap-8                      675508              5316 ns/op             337 B/op          6 allocs/op
+BenchmarkSerialLogger
+BenchmarkSerialLogger-4                   749774              4458 ns/op             152 B/op          4 allocs/op
+BenchmarkSerialLogger-8                   793208              4321 ns/op             152 B/op          4 allocs/op
+BenchmarkSerialLoggerNoFORMAT
+BenchmarkSerialLoggerNoFORMAT-4           977128              3767 ns/op             128 B/op          2 allocs/op
+BenchmarkSerialLoggerNoFORMAT-8          1000000              3669 ns/op             128 B/op          2 allocs/op
+BenchmarkSerialLoggerWrite
+BenchmarkSerialLoggerWrite-4              856617              3659 ns/op             112 B/op          1 allocs/op
+BenchmarkSerialLoggerWrite-8             1000000              3576 ns/op             112 B/op          1 allocs/op
+BenchmarkSerialNativeGoLog
+BenchmarkSerialNativeGoLog-4              892172              4488 ns/op             232 B/op          2 allocs/op
+BenchmarkSerialNativeGoLog-8              798291              4327 ns/op             232 B/op          2 allocs/op
+BenchmarkSerialSlog
+BenchmarkSerialSlog-4                     634228              5602 ns/op             328 B/op          6 allocs/op
+BenchmarkSerialSlog-8                     646191              5481 ns/op             328 B/op          6 allocs/op
+BenchmarkSerialSlogAndLogger
+BenchmarkSerialSlogAndLogger-4            626898              5671 ns/op             328 B/op          6 allocs/op
+BenchmarkSerialSlogAndLogger-8            657820              5622 ns/op             328 B/op          6 allocs/op
+BenchmarkParallelZap
+BenchmarkParallelZap-4                    430472              7818 ns/op             336 B/op          6 allocs/op
+BenchmarkParallelZap-8                    449402              7771 ns/op             337 B/op          6 allocs/op
+BenchmarkParallelLogger
+BenchmarkParallelLogger-4                 639826              5398 ns/op             152 B/op          4 allocs/op
+BenchmarkParallelLogger-8                 604308              5532 ns/op             152 B/op          4 allocs/op
+BenchmarkParallelLoggerNoFORMAT
+BenchmarkParallelLoggerNoFORMAT-4         806749              4311 ns/op             128 B/op          2 allocs/op
+BenchmarkParallelLoggerNoFORMAT-8         790284              4592 ns/op             128 B/op          2 allocs/op
+BenchmarkParallelLoggerWrite
+BenchmarkParallelLoggerWrite-4            764610              4141 ns/op             112 B/op          1 allocs/op
+BenchmarkParallelLoggerWrite-8            880222              4079 ns/op             112 B/op          1 allocs/op
+BenchmarkParallelNativeGoLog
+BenchmarkParallelNativeGoLog-4            609134              5652 ns/op             232 B/op          2 allocs/op
+BenchmarkParallelNativeGoLog-8            588201              5806 ns/op             232 B/op          2 allocs/op
+BenchmarkParallelSLog
+BenchmarkParallelSLog-4                   620878              5624 ns/op             328 B/op          6 allocs/op
+BenchmarkParallelSLog-8                   636448              5532 ns/op             328 B/op          6 allocs/op
+BenchmarkParallelSLogAndgoLogger
+BenchmarkParallelSLogAndgoLogger-4        612314              5612 ns/op             328 B/op          6 allocs/op
+BenchmarkParallelSLogAndgoLogger-8        633426              5596 ns/op             328 B/op          6 allocs/op
+```
 
-|  测试日志库 |  描述|
-| ------------ | ------------ |
-|  zap |	"go.uber.org/zap" 高性能日志库常规格式化输出	   |
-|  go-logger | go-logger 常规格式化输出  |
-| go-logger NoFORMAT  |  go-logger 无格式化输出 |
-|  go-logger write |  go-logger write方法写数据 |
-|slog   |  go 原生 slog库 |
+#### 压测结果分析
 
-##### 测试数据1
+**日志记录库和方法：**
+1. **Zap**：这是一个uber开发的高性能日志库。
+2. **Logger**：go-logger日志库。
+3. **Native Go Log**： Go 内置的 log 包。
+4. **Slog**：这是 Go 1.19 引入的新标准日志库。
+5. **Slog 和 goLogger 结合**：指同时使用go-logger作为slog的日志文件管理库。
 
-###### 测试环境
 
-**amd64 cpu: Intel(R) Core(TM) i5-1035G1 CPU @ 1.00GHz**
+##### 1. 基准测试指标解释：
 
-![](https://tlnet.top/f/1696141149_1696133036.jpg)
+*    **-4 和 -8**: 这些数字表示运行基准测试时使用的 CPU 核心数。-4 表示使用 4 个核心，而 -8 表示使用 8 个核心。
+*    **ns/op**: 每次日志记录操作所需的平均时间（以纳秒为单位）。
+*    **B/op**: 每次日志记录操作分配的平均内存大小（以字节为单位）。
+*    **allocs/op**: 每次日志记录操作产生的分配次数。
 
-![](https://tlnet.top/f/1696141691_1696133161.jpg)
+##### 2. 串行日志记录结果：
 
-![](https://tlnet.top/f/1696141697_1696133275.jpg)
+*    **Zap**: 在 4 核心上有 5469 ns/op 的性能，在 8 核心上有 5316 ns/op 的性能。
+*    **go-logger**: 在 4 核心上有 4458 ns/op 的性能，在 8 核心上有 4321 ns/op 的性能。
+*    **go-logger(无格式)**: 在 4 核心上有 3767 ns/op 的性能，在 8 核心上有 3669 ns/op 的性能。
+*    **go-logger(写操作)**: 在 4 核心上有 3659 ns/op 的性能，在 8 核心上有 3576 ns/op 的性能。
+*    **Native Go Log**: 在 4 核心上有 4488 ns/op 的性能，在 8 核心上有 4327 ns/op 的性能。
+*    **Slog**: 在 4 核心上有 5602 ns/op 的性能，在 8 核心上有 5481 ns/op 的性能。
+*    **Slog 和 go-logger** 结合: 在 4 核心上有 5671 ns/op 的性能，在 8 核心上有 5622 ns/op 的性能。
 
-![](https://tlnet.top/f/1696141701_1696133381.jpg)
+##### 3. 并行日志记录结果：
 
-##### 测试结果
+*    **Zap**: 在 4 核心上有 7818 ns/op 的性能，在 8 核心上有 7771 ns/op 的性能。
+*    **go-logger**: 在 4 核心上有 5398 ns/op 的性能，在 8 核心上有 5532 ns/op 的性能。
+*    **go-logger (无格式)**: 在 4 核心上有 4311 ns/op 的性能，在 8 核心上有 4592 ns/op 的性能。
+*    **go-logger (写操作)**: 在 4 核心上有 4141 ns/op 的性能，在 8 核心上有 4079 ns/op 的性能。
+*    **Native Go Log**: 在 4 核心上有 5652 ns/op 的性能，在 8 核心上有 5806 ns/op 的性能。
+*    **Slog**: 在 4 核心上有 5624 ns/op 的性能，在 8 核心上有 5532 ns/op 的性能。
+*    **Slog 和go-logger 结合**: 在 4 核心上有 5612 ns/op 的性能，在 8 核心上有 5596 ns/op 的性能。
 
-###### 时间消耗
-- go-logger    4500ns/op 左右
-- slog与zap    5600ns/op 左右
+##### 4. 结果分析：
 
-###### 内存消耗
-- go-logger  64
-- slog与zap  330  左右
+*    **Zap** 在串行模式下提供了较好的性能，但在并行模式下的性能有所下降。
+*    **go-logger(写操作)** 在串行和并行模式下均表现出了最佳性能。
+*    **go-logger(无格式)** 通过移除格式化步骤显著提高了性能。
+*    **Native Go Log** 在串行和并行模式下性能接近于 go-logger。
+*    **Slog** 的性能与 **Zap** 和 **go-logger** 相比略逊一筹。
+*    **Slog** 和 **go-logger** 结合 的性能与 **Slog** 相近
+
+##### 5. 结论
+
+*    **从压测结果可以看到，在相同格式下，无论是串行还是高并发场景中，go-logger均表现出最佳性能和最小的内存分配。**
+*    **内置库Log的性能 接近go-logger, 但它可能没有提供同样的灵活性.**
+*    **go-logger作为slog日志文件管理库，无论内存分配还是性能，都与单独使用slog的效果相同，不会引入额外的性能开销。**
