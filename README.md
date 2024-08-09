@@ -1,39 +1,33 @@
-## go-logger 是go 高性能日志库
+## go-logger 是 go的灵活高效日志管理库
 
 ------------
 
 ### 功能特点
 
-- **日志级别设置**：允许动态调整日志级别，以便在不同环境下控制日志的详细程度。
-- **格式化输出**：支持自定义日志的输出格式，包括时间戳、日志级别、日志位置 等元素。
-- **文件数回滚**：支持按照日志文件数自动文件回滚，并防止日志文件数过多。
-- **文件压缩**：支持压缩归档日志文件。
-- **支持标准库log/slog日志文件管理**：支持标准库文件切割，压缩等功能。
-- **外部处理函数**：支持自定义外部处理函数。
-- **日志堆栈信息**：日志记录点可以回溯到程序入口点的所有函数调用序列，包括每一步函数调用的文件名，函数名，行号
-- **日志级别独立日志格式输出**：支持不同日志级别 指定不同的日志输出格式。
+1. **日志级别设置**：支持动态调整日志级别，以便在不同环境下控制日志的详细程度。
+2. **格式化输出**：支持自定义日志的输出格式，包括时间戳、日志级别、日志位置 等元素。
+3. **文件数回滚**：支持按照日志文件数自动文件回滚，并防止日志文件数过多。
+4. **文件压缩**：支持压缩归档日志文件。
+5. **支持标准库log/slog日志文件管理**：支持标准库文件切割，压缩等功能。
+6. **外部处理函数**：支持自定义外部处理函数。
+7. **日志堆栈信息**：支持日志记录点可以回溯到程序入口点的所有函数调用序列，包括每一步函数调用的文件名，函数名，行号
+8. **日志级别独立日志格式输出**：支持不同日志级别 指定不同的日志输出格式。
 
-### go-logger +  slog
+### `go-logger` +  `slog`
 
--  支持 直接作为go 标准库  log/slog  的日志文件管理器，实现 slog的日志文件按小时，天，月份，文件大小等多种方式进行日志文件切割，同时也支持按文件大小切分日志文件后,压缩归档日志文件。
-- go-logger + slog 内存分配与性能 与 slog直接写日志文件一致。
+-  支持 直接作为go 标准库  `log/slog`  的日志文件管理器，实现 `slog`的日志文件按小时，天，月份，文件大小等多种方式进行日志文件切割，同时也支持按文件大小切分日志文件后,压缩归档日志文件。
+- `go-logger` + slog 内存分配与性能 与 slog直接写日志文件一致。
 - 详细参见[使用文档](https://tlnet.top/logdoc "使用文档")
 
-#### [使用文档](https://tlnet.top/logdoc "使用文档")
+### [使用文档](https://tlnet.top/logdoc "使用文档")
 
 ------------
 
-#### 日志级别打印：
-
-###### 调用 Debug()，Info()，Warn(), Error() ,Fatal() 级别由低到高
-
-### 设置日志打印格式：
+### 一. 设置日志打印格式 `SetFormat`
 
 ##### 如： SetFormat(FORMAT_LEVELFLAG | FORMAT_SHORTFILENAME | FORMAT_DATE | FORMAT_TIME)
 
-###### FORMAT_LEVELFLAG | FORMAT_SHORTFILENAME | FORMAT_DATE | FORMAT_TIME 为默认格式
-
-##### 不调用SetFormat()时，使用默认格式
+##### 默认格式:  `FORMAT_LEVELFLAG | FORMAT_SHORTFILENAME | FORMAT_DATE | FORMAT_TIME`
 
 	不格式化，只打印日志内容		FORMAT_NANO		无格式
 	长文件名及行数			FORMAT_LONGFILENAME	全路径
@@ -43,11 +37,18 @@
 	精确到微秒			FORMAT_MICROSECNDS	如：01:33:27.123456
     日志级别标识                     FORMAT_LEVELFLAG        如：[Debug],[Info],[Warn][Error][Fatal]             
     调用函数                         FORMAT_FUNC             调用函数的函数名，若设置，则出现在文件名之后
-##### 打印结果形如：
 
-###### [DEBUG]2023/02/14 01:33:27 logging_test.go 10: 11111111111111
 
-### 设置日志标识输出格式  `SetFormatter`
+#### 示例：
+
+```go
+logger.SetFormat(logger.FORMAT_LEVELFLAG | logger.FORMAT_LONGFILENAME | logger.FORMAT_TIME)
+logger.Error("错误信息：文件未找到")
+// 输出:
+// [ERROR]/usr/log/logging/main.go:20 10:45:00: 错误信息：文件未找到
+```
+
+### 二. 设置日志标识输出格式  `SetFormatter`
 
 ######  SetFormatter("{level} {time} {file}:{message}\n")
 
@@ -58,29 +59,66 @@
 	{file}         文件位置行号信息
 	{message}      日志内容
 
-###### 说明：除了关键标识 {message}  {time}  {file}  {level} 外，其他内容原样输出，如 | ， 空格，换行  等
+##### 说明：除了关键标识 {message}  {time}  {file}  {level} 外，其他内容原样输出，如 | ， 空格，换行  等
+
+###### 通过修改 `formatter`，可以自由定义输出格式，例如：
+
+```go
+logger.SetFormatter("{time} - {level} - {file} - {message}\n")
+logger.Info("日志初始化完成")
+// 输出:
+// 2023/08/09 10:30:00 - [INFO] - main.go:12 - 日志初始化完成
+```
 
 ------------
 
-### 日志级别
+### 三. 日志级别 `SetLevel`  `SetLevelOption`
 
 #####  DEBUG < INFO < WARN < ERROR < FATAL
 
 ###### 关闭所有日志 SetLevel(OFF)
 
-#### 说明：
+`go-logger` 支持多种日志级别，从 `DEBUG` 到 `FATAL`，并可以通过 `SetLevel` 方法设置日志的输出级别：
 
-	若设置 INFO
-	如：SetLevel(INFO)
-	则 所有 Debug("*********")   不再打印出来
-	所以调试阶段，常设置为默认级别ALL，或DEBUG，打印出项目中所有日志，包括调试日志
-	若设置 OFF
-	SetLevel(OFF)
-	则 所有日志不再打印出来
-	所以正式环境，常设置为ERROR或以上的日志级别，项目中Debug()，Info(),warn()等日志不再打印出来，具体视实际需求设置
+```go
+logger.SetLevel(logger.INFO)
+logger.Debug("调试信息：这条日志不会被打印")
+logger.Info("信息：这条日志会被打印")
+```
 
+##### 此外，可以通过 `SetLevelOption` 为不同的日志级别设置独立的日志输出格式：
 
-#### 需将日志写入文件时，则要设置日志文件
+```go
+logger.SetLevelOption(logger.LEVEL_DEBUG, &logger.LevelOption{
+    Format: logger.FORMAT_SHORTFILENAME | logger.FORMAT_TIME,
+})
+logger.SetLevelOption(logger.LEVEL_WARN, &logger.LevelOption{
+    Format: logger.FORMAT_LONGFILENAME | logger.FORMAT_DATE | logger.FORMAT_FUNC,
+})
+```
+
+##### 示例:分别给不同的日志级别设置不一样的输出格式
+```go
+func TestLevelOptions(t *testing.T) {
+  SetLevelOption(LEVEL_DEBUG, &LevelOption{Format: FORMAT_LEVELFLAG | FORMAT_TIME | FORMAT_SHORTFILENAME})
+  SetLevelOption(LEVEL_INFO, &LevelOption{Format: FORMAT_LEVELFLAG})
+  SetLevelOption(LEVEL_WARN, &LevelOption{Format: FORMAT_LEVELFLAG | FORMAT_TIME | FORMAT_SHORTFILENAME | FORMAT_DATE | FORMAT_FUNC})
+  
+  Debug("this is a debug message")
+  Info("this is a info message")
+  Warn("this is a warn message")
+}
+```
+###### 执行结果
+```go
+[DEBUG]18:53:55 logging_test.go:176 this is a debug message
+[INFO]this is a info message
+[WARN]2024/08/07 18:53:55 logging_test.go:TestLevelOptions:178 this is a warn message
+```
+
+### 四. 文件日志
+
+##### go-logger支持日志信息写入文件，并提供文件分割的多种策略与压缩备份等特性
 
 ###### 使用全局log对象时，直接调用设置方法：
 ```go
@@ -94,23 +132,23 @@ SetGzipOn(true)			压缩分割的日志文件
 ```go
 log1 := NewLogger()
 log1.SetRollingDaily("", "logMonitor.log")
- 
+
 log12:= NewLogger()
 log2.SetRollingDaily("", "logBusiness.log")
 ```
 #### 1. 按日期分割日志文件
 ```go
-log.SetRollingDaily("d:/foldTest", "log.txt")
+log.SetRollingDaily("/var/logs", "log.txt")
 // 每天按 log_20221015.txt格式 分割
 //若 log_20221015.txt已经存在，则生成 log_20221015.1.txt ，log_20221015.2.txt等文件
 
-log.SetRollingByTime("d:/foldTest", "log.txt",MODE_MONTH)
+log.SetRollingByTime("/var/logs", "log.txt",MODE_MONTH)
 //按月份分割日志，跨月时，保留上月份日志，如：
 //    log_202210.txt
 //    log_202211.txt
 //    log_202212.txt
 
-log.SetRollingByTime("d:/foldTest", "log.txt",MODE_HOUR)
+log.SetRollingByTime("/var/logs", "log.txt",MODE_HOUR)
 //按小时分割日志, 如：
 //    log_2022101506.txt
 //    log_2022101507.txt
@@ -118,20 +156,37 @@ log.SetRollingByTime("d:/foldTest", "log.txt",MODE_HOUR)
 ```
 #### 2. 按文件大小分割日志文件
 ```go
-log.SetRollingFile("d:/foldTest", "log.txt", 300, MB)
+log.SetRollingFile("/var/logs", "log.txt", 300, MB)
 //当文件超过300MB时，按log.1.txt，log.2.txt 格式备份
 //目录参数可以为空，则默认当前目录。
 
-log.SetRollingFileLoop(`d:/foldTest`, "log.txt", 300, MB, 50) 
+log.SetRollingFileLoop("/var/logs", "log.txt", 300, MB, 50)
 //设置日志文件大小最大为300M
 //日志文件只保留最新的50个
 ```
 
 ------
 
-### Option参数
+### 五. Option参数 `SetOption`
 
-###### 建议通过option参数设置log的所有参数，更加易于维护
+###### 通过 `Option` 参数可以更加灵活地配置日志。`Option` 包含多个配置项，使得日志配置更加清晰和易于维护。
+
+```go
+logger.SetOption(&logger.Option{
+  Level:       logger.LEVEL_DEBUG,
+  Console:     false,
+  Format:      logger.FORMAT_LEVELFLAG | logger.FORMAT_SHORTFILENAME | logger.FORMAT_DATE | logger.FORMAT_TIME,
+  Formatter:   "{level} {time} {file}:{message}\n",
+  FileOption:  &logger.FileSizeMode{
+    Filename:  "app.log",
+    Maxsize:   1 << 30,  // 1GB
+    Maxbuckup: 10,
+    IsCompress: true,
+  },
+})
+```
+
+##### 属性说明：
 ```text
 Level           ：日志级别
 Console         ：控制台打印
@@ -141,10 +196,10 @@ FileOption      ：日志文件接口参数
 Stacktrace      ：开启日志堆栈信息记录的日志级别
 CustomHandler   ：自定义日志处理函数，返回true时，继续执行打印程序，返回false时，不再执行打印程序_
 ```
-- #### FileOption介绍
+1. #### FileOption介绍
 
-- ###### FileOption为接口，有FileSizeMode与FileTimeMode两个实现对象
-- ###### FileTimeMode对象
+  - ###### FileOption为接口，有FileSizeMode与FileTimeMode两个实现对象
+  - ###### `FileTimeMode` 按时间滚动备份日志文件
     ```text
     Filename   日志文件路径
     Timemode   按小时，天，月份：MODE_HOUR，MODE_DAY，MODE_MONTH
@@ -152,7 +207,7 @@ CustomHandler   ：自定义日志处理函数，返回true时，继续执行打
     IsCompress  备份文件是否压缩
     ```
 
-- ###### FileSizeMode对象
+  - ###### `FileSizeMode` 按文件大小滚动备份日志文件
     ```text
 	Filename   日志文件路径
 	Maxsize    日志文件大小的最大值，超过则滚动备份
@@ -160,47 +215,55 @@ CustomHandler   ：自定义日志处理函数，返回true时，继续执行打
 	IsCompress  备份文件是否压缩
     ```
 
-- ##### SetOption示例1
+  - ##### SetOption 示例1
     ```go
+    // debug级别，关闭控制台日志打印，按天备份日志，最多日志文件数位10，备份时压缩文件，日志文件名为 testlogtime.log
     SetOption(&Option{Level: LEVEL_DEBUG, Console: false, FileOption: &FileTimeMode{Filename: "testlogtime.log", Maxbuckup: 10, IsCompress: true, Timemode: MODE_DAY}})
     ```
-- ##### SetOption示例2
+  - ##### SetOption 示例2
     ```go
+    // debug级别，关闭控制台日志打印，按文件大小备份日志，按每文件大小为1G时备份一个文件，  最多日志文件数位10，备份时压缩文件，日志文件名为 testlog.log
     SetOption(&Option{Level: LEVEL_DEBUG, Console: false, FileOption: &FileSizeMode{Filename: "testlog.log", Maxsize: 1<<30, Maxbuckup: 10, IsCompress: true}})
     ```
-- ##### Stacktrace 堆栈日志
-- **示例**
-  ```go
-  func TestStacktrace(t *testing.T) {
-    SetOption(&Option{Console: true, Stacktrace: LEVEL_WARN, Format: FORMAT_LEVELFLAG | FORMAT_DATE | FORMAT_TIME | FORMAT_SHORTFILENAME | FORMAT_FUNC})
-    Debug("this is a debug message")
-    Stacktrace1()
-  }
-  
-  func Stacktrace1() {
-    Info("this is a info message")
-    Stacktrace2()
-  }
-  
-  func Stacktrace2() {
-    Warn("this is a warn message")
-    Stacktrace3()
-  }
-  
-  func Stacktrace3() {
-    Error("this is a error message")
-    Fatal("this is a fatal message")
-  }
-  ```
-  ##### 执行结果
-  ```go
-  [DEBUG]2024/08/07 18:46:12 logging_test.go:152 this is a debug message
-  [INFO]2024/08/07 18:46:12 logging_test.go:157 this is a info message
-  [WARN]2024/08/07 18:46:12 logging_test.go:162#logging_test.go:158#logging_test.go:153#testing.go:1689#asm_amd64.s:1695 this is a warn message
-  [ERROR]2024/08/07 18:46:12 logging_test.go:167#logging_test.go:163#logging_test.go:158#logging_test.go:153#testing.go:1689#asm_amd64.s:1695 this is a error message
-  ```
 
-- #### CustomHandler 自定义函数，可以自定义处理逻辑
+2.  ##### **Stacktrace** 堆栈日志
+
+  - ###### 栈追踪日志功能可以记录日志记录点到程序入口点的所有函数调用序列，包括每一步函数调用的文件名、函数名和行号。这对于调试和错误分析非常有帮助。
+  - 当日志级别为 `WARN` 或更高时，日志记录将包含完整的调用栈信息。
+  - **示例**
+
+    ```go
+    func TestStacktrace(t *testing.T) {
+        SetOption(&Option{Console: true, Stacktrace: LEVEL_WARN, Format: FORMAT_LEVELFLAG | FORMAT_DATE | FORMAT_TIME | FORMAT_SHORTFILENAME | FORMAT_FUNC})
+        Debug("this is a debug message")
+        Stacktrace1()
+    }
+    
+    func Stacktrace1() {
+        Info("this is a info message")
+        Stacktrace2()
+    }
+    
+    func Stacktrace2() {
+        Warn("this is a warn message")
+        Stacktrace3()
+    }
+    
+    func Stacktrace3() {
+        Error("this is a error message")
+        Fatal("this is a fatal message")
+    }
+    ```
+
+    ##### 执行结果
+    ```go
+    [DEBUG]2024/08/07 18:46:12 logging_test.go:152 this is a debug message
+    [INFO]2024/08/07 18:46:12 logging_test.go:157 this is a info message
+    [WARN]2024/08/07 18:46:12 logging_test.go:162#logging_test.go:158#logging_test.go:153#testing.go:1689#asm_amd64.s:1695 this is a warn message
+    [ERROR]2024/08/07 18:46:12 logging_test.go:167#logging_test.go:163#logging_test.go:158#logging_test.go:153#testing.go:1689#asm_amd64.s:1695 this is a error message
+    ```
+
+3. #### `CustomHandler` 自定义函数，可以自定义处理逻辑
 - **示例**
   ```go
   func TestCustomHandler(t *testing.T) {
@@ -236,7 +299,7 @@ CustomHandler   ：自定义日志处理函数，返回true时，继续执行打
 
 ------------
 
-#### 控制台日志设置
+### 六. 控制台日志设置 `SetConsole`
 ```go
 //全局log：
 SetConsole(false)  //控制台不打日志,默认值true
@@ -245,77 +308,16 @@ log.SetConsole(false)  //控制台不打日志,默认值true
 ```
 ***
 
-### 打印日志示例：
+### 七. 校正打印时间  `TIME_DEVIATION`
+###### 有时在分布式环境中，可能存在不同机器时间不一致的问题，`go-logger` 允许通过 `TIME_DEVIATION` 参数来进行时间校正。
+
 ```go
-//SetRollingFile("", "log.txt", 1000, KB)  设置日志文件信息
-//SetRollingFileLoop(``, "log.txt", 300, MB, 50)   设置日志文件大小300M，最多保留50个最近的日志文件
-//SetRollingByTime(``, "log.txt", MODE_MONTH) 按月份分割日志
-//SetRollingByTime(``, "log.txt", MODE_HOUR)  按小时分割日志
-//SetRollingByTime(``, "log.txt", MODE_DAY)  按天分割日志与调用SetRollingDaily("", "log.txt") 作用相同
-
-
-//控制台不打印
-// SetConsole(false)
-
-Debug("00000000000")
-//默认格式：[DEBUG]2023/07/10 18:40:49 logging_test.go:12: 00000000000
-
-SetFormat(FORMAT_NANO) 
-Debug("111111111111")
-//设置格式(无格式化)：111111111111
-
-SetFormat(FORMAT_LONGFILENAME) 
-Info("22222222")
-//设置格式(长文件路径) ：[INFO]/usr/log/logging/logging_test.go:14: 22222222
-
-SetFormat(FORMAT_DATE | FORMAT_SHORTFILENAME) 
-Warn("333333333")
-//设置格式(日期+短文件路径) ：[WARN]2023/07/10 logging_test.go:16: 333333333
-
-SetFormat(FORMAT_DATE | FORMAT_TIME) /
-Error("444444444")
-//设置格式 ：[ERROR]2023/07/10 18:35:19 444444444
-
-SetFormat(FORMAT_SHORTFILENAME)
-Fatal("5555555555")
-//设置格式 ：[FATAL]logging_test.go:21: 5555555555
-
-SetFormat(FORMAT_TIME)
-Fatal("66666666666")
-//设置格式 ：[FATAL]18:35:19 66666666666
+logger.TIME_DEVIATION = 1000 // 将日志时间校正 +1微妙
 ```
 
-### 校正打印时间
-```go
-//修改TIME_DEVIATION可以校正日志打印时间，单位纳秒
-TIME_DEVIATION 
-```
-
-### SetLevelOption  给不同日志级别设置不同的输出日志格式
-
-###### 通过SetLevelOption函数，可以给指定的日志级别设置独立的日志输出格式
-
-##### 示例:分别给不同的日志级别设置不一样的输出格式
-```go
-func TestLevelOptions(t *testing.T) {
-  SetLevelOption(LEVEL_DEBUG, &LevelOption{Format: FORMAT_LEVELFLAG | FORMAT_TIME | FORMAT_SHORTFILENAME})
-  SetLevelOption(LEVEL_INFO, &LevelOption{Format: FORMAT_LEVELFLAG})
-  SetLevelOption(LEVEL_WARN, &LevelOption{Format: FORMAT_LEVELFLAG | FORMAT_TIME | FORMAT_SHORTFILENAME | FORMAT_DATE | FORMAT_FUNC})
-  
-  Debug("this is a debug message")
-  Info("this is a info message")
-  Warn("this is a warn message")
-}
-```
-###### 执行结果
-```go
-[DEBUG]18:53:55 logging_test.go:176 this is a debug message
-[INFO]this is a info message
-[WARN]2024/08/07 18:53:55 logging_test.go:TestLevelOptions:178 this is a warn message
-```
 ------
 
-#### 性能测试：
+## 性能测试：
 
 ```go
 cpu: Intel(R) Core(TM) i5-1035G1 CPU @ 1.00GHz
