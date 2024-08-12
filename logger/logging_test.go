@@ -20,7 +20,7 @@ func Test_Log(t *testing.T) {
 	Warn("this is warning message")
 	// SetLevel(FATAL) //设置为FATAL后，下面Error()级别小于FATAL,将不打印出来
 	Error("this is error message")
-	SetFormat(FORMAT_LEVELFLAG | FORMAT_DATE | FORMAT_MICROSECNDS | FORMAT_SHORTFILENAME)
+	SetFormat(FORMAT_LEVELFLAG | FORMAT_DATE | FORMAT_MICROSECONDS | FORMAT_SHORTFILENAME)
 	SetFormatter("{message}|{level} {time} {file}\n")
 	// SetFormat(FORMAT_NANO)
 	Fatal("this is fatal message")
@@ -45,7 +45,7 @@ func Test_LogOne(t *testing.T) {
 	log.Debug("this is debug message")
 	log.SetFormat(FORMAT_LONGFILENAME) //设置后将打印出文件全部路径信息
 	log.Info("this is info message")
-	log.SetFormat(FORMAT_MICROSECNDS | FORMAT_SHORTFILENAME) //设置日志格式，时间+短文件名
+	log.SetFormat(FORMAT_MICROSECONDS | FORMAT_SHORTFILENAME) //设置日志格式，时间+短文件名
 	log.Warn("this is warning message")
 	log.SetLevel(LEVEL_FATAL) //设置为FATAL后，下面Error()级别小于FATAL,将不打印出来
 	log.Error("this is error message")
