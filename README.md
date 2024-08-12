@@ -34,7 +34,7 @@
 	短文件名及行数			FORMAT_SHORTFILENAME	如：logging_test.go:10
 	精确到日期			FORMAT_DATE		如：2023/02/14
 	精确到秒			        FORMAT_TIME		如：01:33:27
-	精确到微秒			FORMAT_MICROSECNDS	如：01:33:27.123456
+	精确到微秒			FORMAT_MICROSECONDS	如：01:33:27.123456
     日志级别标识                     FORMAT_LEVELFLAG        如：[Debug],[Info],[Warn][Error][Fatal]             
     调用函数                         FORMAT_FUNC             调用函数的函数名，若设置，则出现在文件名之后
 
@@ -194,7 +194,7 @@ Format          ：日志格式，默认：FORMAT_LEVELFLAG | FORMAT_SHORTFILENA
 Formatter       ：日志输出  默认："{level}{time} {file}:{mesaage}\n"
 FileOption      ：日志文件接口参数
 Stacktrace      ：开启日志堆栈信息记录的日志级别
-CustomHandler   ：自定义日志处理函数，返回true时，继续执行打印程序，返回false时，不再执行打印程序_
+CustomHandler   ：自定义日志处理函数，返回true时，继续执行打印程序，返回false时，不再执行打印程序
 ```
 1. #### FileOption介绍
 
