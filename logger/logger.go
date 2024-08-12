@@ -92,11 +92,11 @@ const (
 	// 时间精确到秒
 	FORMAT_TIME = _FORMAT(2)
 
-	// FORMAT_MICROSECNDS
+	// FORMAT_MICROSECONDS
 	//
 	// microsecond resolution: 01:23:23.123123.
 	// 时间精确到微秒
-	FORMAT_MICROSECNDS = _FORMAT(4)
+	FORMAT_MICROSECONDS = _FORMAT(4)
 
 	// FORMAT_LEVELFLAG
 	//
@@ -998,7 +998,7 @@ func formatmsg(msg []byte, t time.Time, callstack *callStack, flag _FORMAT, leve
 	if flag&FORMAT_LEVELFLAG != 0 {
 		levelbuf.Write(getlevelname(level))
 	}
-	if flag&(FORMAT_DATE|FORMAT_TIME|FORMAT_MICROSECNDS) != 0 {
+	if flag&(FORMAT_DATE|FORMAT_TIME|FORMAT_MICROSECONDS) != 0 {
 		if flag&FORMAT_DATE != 0 {
 			year, month, day := t.Date()
 			itoa(timebuf, year, 4)
@@ -1008,14 +1008,14 @@ func formatmsg(msg []byte, t time.Time, callstack *callStack, flag _FORMAT, leve
 			itoa(timebuf, day, 2)
 			timebuf.WriteByte(' ')
 		}
-		if flag&(FORMAT_TIME|FORMAT_MICROSECNDS) != 0 {
+		if flag&(FORMAT_TIME|FORMAT_MICROSECONDS) != 0 {
 			hour, min, sec := t.Clock()
 			itoa(timebuf, hour, 2)
 			timebuf.WriteByte(':')
 			itoa(timebuf, min, 2)
 			timebuf.WriteByte(':')
 			itoa(timebuf, sec, 2)
-			if flag&FORMAT_MICROSECNDS != 0 {
+			if flag&FORMAT_MICROSECONDS != 0 {
 				timebuf.WriteByte('.')
 				itoa(timebuf, t.Nanosecond()/1e3, 6)
 			}
