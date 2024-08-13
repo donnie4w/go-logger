@@ -50,16 +50,16 @@ logger.Error("错误信息：文件未找到")
 
 ### 二. 设置日志标识输出格式  `SetFormatter`
 
-######  SetFormatter("{level} {time} {file}:{message}\n")
+######  `SetFormatter("{level} {time} {file}:{message}\n")`
 
-###### 默认格式："{level} {time} {file}:{message}\n"
+##### 默认格式：`"{level} {time} {file}:{message}\n"`
 
 	{level}        日志级别信息：如[Debug],[Info],[Warn],[Error],[Fatal]
 	{time}         日志时间信息
 	{file}         文件位置行号信息
 	{message}      日志内容
 
-##### 说明：除了关键标识 {message}  {time}  {file}  {level} 外，其他内容原样输出，如 | ， 空格，换行  等
+##### 说明：除了关键标识  `{message}`  `{time}`  `{file}`  `{level}` 外，其他内容原样输出，如 | ， 空格，换行  等
 
 ###### 通过修改 `formatter`，可以自由定义输出格式，例如：
 
@@ -76,7 +76,7 @@ logger.Info("日志初始化完成")
 
 #####  DEBUG < INFO < WARN < ERROR < FATAL
 
-###### 关闭所有日志 SetLevel(OFF)
+###### 关闭所有日志 `SetLevel(OFF)`
 
 `go-logger` 支持多种日志级别，从 `DEBUG` 到 `FATAL`，并可以通过 `SetLevel` 方法设置日志的输出级别：
 
@@ -257,12 +257,13 @@ CustomHandler   ：自定义日志处理函数，返回true时，继续执行打
 
     ##### 执行结果
     ```go
-    [DEBUG]2024/08/07 18:46:12 logging_test.go:152 this is a debug message
-    [INFO]2024/08/07 18:46:12 logging_test.go:157 this is a info message
-    [WARN]2024/08/07 18:46:12 logging_test.go:162#logging_test.go:158#logging_test.go:153#testing.go:1689#asm_amd64.s:1695 this is a warn message
-    [ERROR]2024/08/07 18:46:12 logging_test.go:167#logging_test.go:163#logging_test.go:158#logging_test.go:153#testing.go:1689#asm_amd64.s:1695 this is a error message
+    [DEBUG]2024/08/07 20:22:40 logging_test.go:TestStacktrace:151 this is a debug message
+    [INFO]2024/08/07 20:22:40 logging_test.go:Stacktrace1:156 this is a info message
+    [WARN]2024/08/07 20:22:40 logging_test.go:Stacktrace2:161#logging_test.go:Stacktrace1:157#logging_test.go:TestStacktrace:152#testing.go:tRunner:1689#asm_amd64.s:goexit:1695 this is a warn message
+    [ERROR]2024/08/07 20:22:40 logging_test.go:Stacktrace3:166#logging_test.go:Stacktrace2:162#logging_test.go:Stacktrace1:157#logging_test.go:TestStacktrace:152#testing.go:tRunner:1689#asm_amd64.s:goexit:1695 this is a error message
+    [FATAL]2024/08/07 20:22:40 logging_test.go:Stacktrace3:167#logging_test.go:Stacktrace2:162#logging_test.go:Stacktrace1:157#logging_test.go:TestStacktrace:152#testing.go:tRunner:1689#asm_amd64.s:goexit:1695 this is a fatal message    ```
     ```
-
+    
 3. #### `CustomHandler` 自定义函数，可以自定义处理逻辑
 - **示例**
   ```go
@@ -372,7 +373,7 @@ BenchmarkParallelSLogAndgoLogger-8        633426              5596 ns/op        
 2. **Logger**：go-logger日志库。
 3. **Native Go Log**： Go 内置的 log 包。
 4. **Slog**：这是 Go 1.19 引入的新标准日志库。
-5. **Slog 和 goLogger 结合**：指同时使用go-logger作为slog的日志文件管理库。
+5. **Slog 和 go-logger 结合**：指同时使用go-logger作为slog的日志文件管理库。
 
 
 ##### 1. 基准测试指标解释：
