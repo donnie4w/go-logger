@@ -261,7 +261,7 @@ CustomHandler   ：自定义日志处理函数，返回true时，继续执行打
     [INFO]2024/08/07 20:22:40 logging_test.go:Stacktrace1:156 this is a info message
     [WARN]2024/08/07 20:22:40 logging_test.go:Stacktrace2:161#logging_test.go:Stacktrace1:157#logging_test.go:TestStacktrace:152#testing.go:tRunner:1689#asm_amd64.s:goexit:1695 this is a warn message
     [ERROR]2024/08/07 20:22:40 logging_test.go:Stacktrace3:166#logging_test.go:Stacktrace2:162#logging_test.go:Stacktrace1:157#logging_test.go:TestStacktrace:152#testing.go:tRunner:1689#asm_amd64.s:goexit:1695 this is a error message
-    [FATAL]2024/08/07 20:22:40 logging_test.go:Stacktrace3:167#logging_test.go:Stacktrace2:162#logging_test.go:Stacktrace1:157#logging_test.go:TestStacktrace:152#testing.go:tRunner:1689#asm_amd64.s:goexit:1695 this is a fatal message    ```
+    [FATAL]2024/08/07 20:22:40 logging_test.go:Stacktrace3:167#logging_test.go:Stacktrace2:162#logging_test.go:Stacktrace1:157#logging_test.go:TestStacktrace:152#testing.go:tRunner:1689#asm_amd64.s:goexit:1695 this is a fatal message
     ```
     
 3. #### `CustomHandler` 自定义函数，可以自定义处理逻辑
