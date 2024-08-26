@@ -80,6 +80,12 @@ const (
 	// 短文件名及行数
 	FORMAT_SHORTFILENAME = _FORMAT(16)
 
+	// FORMAT_RELATIVEFILENAME
+	//
+	// relative file name element and line number
+	// 相对路径文件名及行数
+	FORMAT_RELATIVEFILENAME = _FORMAT(256)
+
 	// FORMAT_DATE
 	//
 	// the date in the local time zone: 2009/01/23
@@ -976,7 +982,7 @@ var m = hashmap.NewLimitMap[any, runtime.Frame](1 << 13)
 
 func output(flag _FORMAT, calldepth int, s []byte, level _LEVEL, formatter *string, stacktrace _LEVEL) (buf *buffer.Buffer) {
 	var callstack *callStack
-	if flag&(FORMAT_SHORTFILENAME|FORMAT_LONGFILENAME) != 0 {
+	if flag&(FORMAT_SHORTFILENAME|FORMAT_LONGFILENAME|FORMAT_RELATIVEFILENAME) != 0 {
 		callstack = collectCallStack(k1(calldepth), flag&FORMAT_FUNC != 0, callstack, stacktrace > LEVEL_ALL && stacktrace <= level)
 	}
 	return formatmsg(s, _time(), callstack, flag, level, formatter)
@@ -1024,7 +1030,7 @@ func formatmsg(msg []byte, t time.Time, callstack *callStack, flag _FORMAT, leve
 			timebuf.WriteByte(' ')
 		}
 	}
-	if flag&(FORMAT_SHORTFILENAME|FORMAT_LONGFILENAME) != 0 {
+	if flag&(FORMAT_SHORTFILENAME|FORMAT_LONGFILENAME|FORMAT_RELATIVEFILENAME) != 0 {
 		if callstack != nil {
 			callstack.Pop(flag, filebuf)
 		}
