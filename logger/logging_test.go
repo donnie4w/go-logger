@@ -14,7 +14,9 @@ import (
 func Test_Log(t *testing.T) {
 	SetRollingDaily(`D:\cfoldTest`, "log2.txt")
 	// SetConsole(false)
+	SetFormat(FORMAT_DATE | FORMAT_LONGFILENAME) //设置后，下面日志格式只打印日期+短文件信息
 	Debug("this is debug message")
+	SetFormat(FORMAT_DATE | FORMAT_RELATIVEFILENAME) //设置后，下面日志格式只打印日期+短文件信息
 	Info("this is info message")
 	SetFormat(FORMAT_DATE | FORMAT_SHORTFILENAME) //设置后，下面日志格式只打印日期+短文件信息
 	Warn("this is warning message")
