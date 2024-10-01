@@ -194,8 +194,7 @@ func GetStaticLogger() *Logging {
 //   - maxFileSize :  maximum size of a log file
 //   - unit		   :  size unit :  KB,MB,GB,TB
 //
-// Deprecated
-// Use SeOption() instead.
+// Use SetOption() instead.
 func SetRollingFile(fileDir, fileName string, maxFileSize int64, unit _UNIT) (l *Logging, err error) {
 	return SetRollingFileLoop(fileDir, fileName, maxFileSize, unit, 0)
 }
@@ -205,36 +204,39 @@ func SetRollingFile(fileDir, fileName string, maxFileSize int64, unit _UNIT) (l 
 //   - fileDir   :directory where log files are stored, If it is the current directory, you also can set it to ""
 //   - fileName  : log file name
 //
-// Deprecated
-// Use SeOption() instead.
+// Use SetOption() instead.
 func SetRollingDaily(fileDir, fileName string) (l *Logging, err error) {
 	return SetRollingByTime(fileDir, fileName, MODE_DAY)
 }
 
 // SetRollingFileLoop like SetRollingFile,but only keep (maxFileNum) current files
 // - maxFileNum : the number of files that are retained
-// Deprecated
-// Use SeOption() instead.
+//
+// Use SetOption() instead.
 func SetRollingFileLoop(fileDir, fileName string, maxFileSize int64, unit _UNIT, maxFileNum int) (l *Logging, err error) {
 	return static_lo.SetRollingFileLoop(fileDir, fileName, maxFileSize, unit, maxFileNum)
 }
 
 // SetRollingByTime like SetRollingDaily,but supporte hourly backup ,dayly backup and monthly backup
 // mode : 	MODE_HOUR    MODE_DAY   MODE_MONTH
-// Deprecated
-// Use SeOption() instead.
+//
+// Use SetOption() instead.
 func SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (l *Logging, err error) {
 	return static_lo.SetRollingByTime(fileDir, fileName, mode)
 }
 
 // SetGzipOn when set true, the specified backup file of both SetRollingFile and SetRollingFileLoop will be save as a compressed file
-// Deprecated
-// Use SeOption() instead.
+//
+// Use SetOption() instead.
 func SetGzipOn(is bool) (l *Logging) {
 	return static_lo.SetGzipOn(is)
 }
 
 // SetOption 配置对象
+//
+// e.g.
+//
+// SetOption(&Option{Level: LEVEL_DEBUG, Console: true, FileOption: &FileSizeMode{Filename: "test.log", Maxsize: 500, Maxbuckup: 3, IsCompress: false}})
 func SetOption(option *Option) *Logging {
 	return static_lo.SetOption(option)
 }
@@ -408,8 +410,8 @@ func (t *Logging) SetFormatter(formatter string) *Logging {
 }
 
 // SetRollingFile
-// Deprecated
-// Use SeOption() instead.
+//
+// Use SetOption() instead.
 // 按日志文件大小分割日志文件
 // fileDir 日志文件夹路径
 // fileName 日志文件名
@@ -420,8 +422,8 @@ func (t *Logging) SetRollingFile(fileDir, fileName string, maxFileSize int64, un
 }
 
 // SetRollingFileLoop
-// Deprecated
-// Use SeOption() instead.
+//
+// Use SetOption() instead.
 // 按日志文件大小分割日志文件，指定保留的最大日志文件数
 // fileDir 日志文件夹路径
 // fileName 日志文件名
@@ -447,8 +449,8 @@ func (t *Logging) SetRollingFileLoop(fileDir, fileName string, maxFileSize int64
 }
 
 // SetRollingDaily
-// Deprecated
-// Use SeOption() instead.
+//
+// Use SetOption() instead.
 // 按日期分割日志文件
 // fileDir 日志文件夹路径
 // fileName 日志文件名
@@ -457,8 +459,8 @@ func (t *Logging) SetRollingDaily(fileDir, fileName string) (l *Logging, err err
 }
 
 // SetRollingByTime
-// Deprecated
-// Use SeOption() instead.
+//
+// Use SetOption() instead.
 // 指定按 小时，天，月 分割日志文件
 // fileDir 日志文件夹路径
 // fileName 日志文件名
@@ -488,8 +490,8 @@ func (t *Logging) SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (l
 }
 
 // SetGzipOn
-// Deprecated
-// Use SeOption() instead.
+//
+// Use SetOption() instead.
 func (t *Logging) SetGzipOn(is bool) *Logging {
 	t._gzip = is
 	if t._filehandler != nil {
@@ -500,6 +502,10 @@ func (t *Logging) SetGzipOn(is bool) *Logging {
 
 // SetOption applies the configuration options specified in the Option struct to the Logging instance.
 // This method updates the fields of the Logging struct according to the provided Option and returns a pointer to the Logging instance for method chaining.
+//
+// e.g.
+//
+// SetOption(&Option{Level: LEVEL_DEBUG, Console: true, FileOption: &FileSizeMode{Filename: "test.log", Maxsize: 500, Maxbuckup: 3, IsCompress: false}})
 func (t *Logging) SetOption(option *Option) *Logging {
 	t._rwLock.Lock()
 	defer t._rwLock.Unlock()
@@ -978,7 +984,7 @@ func lgzip(gzfile, gzname, srcfile string) (err error) {
 	return
 }
 
-var m = hashmap.NewLimitMap[any, runtime.Frame](1 << 13)
+var m = hashmap.NewLimitHashMap[uintptr, runtime.Frame](1 << 13)
 
 func output(flag _FORMAT, calldepth int, s []byte, level _LEVEL, formatter *string, stacktrace _LEVEL) (buf *buffer.Buffer) {
 	var callstack *callStack
