@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"path/filepath"
 	"strconv"
-	"sync"
 	"testing"
 	"time"
 )
@@ -53,32 +52,6 @@ func Test_LogOne(t *testing.T) {
 	log.Error("this is error message")
 	log.Fatal("this is fatal message")
 	time.Sleep(2 * time.Second)
-}
-
-func BenchmarkSerialLog(b *testing.B) {
-	b.StopTimer()
-	log := NewLogger()
-	log.SetRollingFile(`./`, "log1.txt", 100, MB)
-	log.SetConsole(false)
-	// log.SetFormat(FORMAT_NANO)
-	b.StartTimer()
-	wg := sync.WaitGroup{}
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
-
-		go func() {
-			for i := 0; i < b.N; i++ {
-				// log.Write([]byte(">>>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
-				log.Debug(i, ">>>this is debug message")
-				// log.Info(i, ">>>this is info message")
-				// log.Warn(i, ">>>this is warm message")
-				// log.log.Error(i, ">>>this is error message")
-			}
-			wg.Done()
-		}()
-	}
-	wg.Wait()
-
 }
 
 func TestSlog(t *testing.T) {
