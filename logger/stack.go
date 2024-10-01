@@ -53,9 +53,9 @@ func collectCallStack(depth int, formatfunc bool, stack *callStack, recursion bo
 		}
 		var f runtime.Frame
 		var ok bool
-		if f, ok = m.Get(pcs); !ok {
+		if f, ok = m.Get(pcs[0]); !ok {
 			f, _ = runtime.CallersFrames([]uintptr{pcs[0]}).Next()
-			m.Put(pcs, f)
+			m.Put(pcs[0], f)
 		}
 		if formatfunc {
 			stack.PushWithFunc(f.File, f.Line, funcname(f.Func.Name()))
