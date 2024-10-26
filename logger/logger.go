@@ -1,7 +1,9 @@
-// Copyright (c) 2023, donnie <donnie4w@gmail.com>
+// Copyright (c) 2014, donnie <donnie4w@gmail.com>
 // All rights reserved.
 // Use of t source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+//
+// github.com/donnie4w/go-logger
 
 package logger
 
@@ -15,7 +17,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"runtime/debug"
 	"sort"
 	"strings"
 	"sync"
@@ -23,25 +24,23 @@ import (
 	"time"
 
 	"github.com/donnie4w/gofer/buffer"
+	. "github.com/donnie4w/gofer/fastio"
 	"github.com/donnie4w/gofer/hashmap"
 )
 
-const (
-	VERSION string = "0.26.0"
-)
-
-type _LEVEL int8
+type LEVELTYPE int8
 type _UNIT int64
 type _MODE_TIME uint8
 type _CUTMODE int //dailyRolling ,rollingFile
 type _FORMAT int
 
-const _DATEFORMAT_DAY = "20060102"
-const _DATEFORMAT_HOUR = "2006010215"
-const _DATEFORMAT_MONTH = "200601"
-const default_format = FORMAT_LEVELFLAG | FORMAT_SHORTFILENAME | FORMAT_DATE | FORMAT_TIME
-const default_level = LEVEL_ALL
-const default_formatter = "{level}{time} {file}:{message}\n"
+const (
+	_DATEFORMAT_DAY   = "20060102"
+	_DATEFORMAT_HOUR  = "2006010215"
+	_DATEFORMAT_MONTH = "200601"
+	default_format    = FORMAT_LEVELFLAG | FORMAT_SHORTFILENAME | FORMAT_DATE | FORMAT_TIME
+	default_level     = LEVEL_ALL
+)
 
 var static_lo = NewLogger()
 
@@ -121,7 +120,7 @@ const (
 
 	// LEVEL_ALL is the lowest level,If the log level is this level, logs of other levels can be printed
 	// 日志级别：ALL 打印所有日志
-	LEVEL_ALL _LEVEL = iota
+	LEVEL_ALL LEVELTYPE = iota
 
 	// LEVEL_DEBUG  debug log level
 	// 日志级别：DEBUG 小于INFO
@@ -155,21 +154,41 @@ const (
 	_SIZEMODE _CUTMODE = 2
 )
 
-// SetFormat
-// 设置打印格式
+// SetFormat sets the logging format to the specified format type.
+//
+// 设置打印格式: FORMAT_LEVELFLAG | FORMAT_SHORTFILENAME | FORMAT_DATE | FORMAT_TIME
+//
+// Parameters:
+//   - format: The desired format for log entries, represented by the _FORMAT type.
+//
+// Returns:
+//   - *Logging: A Logging instance to enable method chaining.
 func SetFormat(format _FORMAT) *Logging {
 	return static_lo.SetFormat(format)
 }
 
-// SetLevel
-// Setting the log Level
-// 设置控制台日志级别，默认ALL
-func SetLevel(level _LEVEL) *Logging {
+// SetLevel sets the logging level to the specified level type.
+//
+// 设置控制台日志级别，默认 LEVEL_ALL, 其他: LEVEL_DEBUG, LEVEL_INFO, LEVEL_WARN
+//
+// Parameters:
+//   - level: The logging level (e.g., LEVEL_DEBUG, LEVEL_INFO, LEVEL_WARN), represented by the LEVELTYPE type.
+//
+// Returns:
+//   - *Logging: A Logging instance to enable method chaining.
+func SetLevel(level LEVELTYPE) *Logging {
 	return static_lo.SetLevel(level)
 }
 
-// SetFormatter
-// 设置输出格式，默认: "{level}{time} {file}:{message}\n"
+// SetFormatter specifies a custom format string for the logging output.
+//
+// 设置输出格式，默认:  "{level}{time} {file} {message}\n"
+//
+// Parameters:
+//   - formatter: A string defining the format for log entries, allowing custom log entry layouts.
+//
+// Returns:
+//   - *Logging: A Logging instance to enable method chaining.
 func SetFormatter(formatter string) *Logging {
 	return static_lo.SetFormatter(formatter)
 }
@@ -184,7 +203,7 @@ func SetConsole(on bool) *Logging {
 // return the default log object
 // 获得全局Logger对象
 func GetStaticLogger() *Logging {
-	return _staticLogger()
+	return static_lo
 }
 
 // SetRollingFile when the log file(fileDir+`\`+fileName) exceeds the specified size(maxFileSize), it will be backed up with a specified file name
@@ -241,49 +260,146 @@ func SetOption(option *Option) *Logging {
 	return static_lo.SetOption(option)
 }
 
-func _staticLogger() *Logging {
-	return static_lo
+// Debug logs a message at the DEBUG level using the default logging instance.
+// Accepts any number of arguments to format the log entry.
+//
+// Parameters:
+//   - v: Variadic arguments to be logged.
+//
+// Returns:
+//   - *Logging: A Logging instance for possible further usage.
+func Debug(v ...any) *Logging {
+	return println(nil, LEVEL_DEBUG, default_level, 2, v...)
 }
 
-// Debug Logs are printed at the DEBUG level
-func Debug(v ...interface{}) *Logging {
-	_println(LEVEL_DEBUG, default_level, 2, v...)
-	return _staticLogger()
+// Info logs a message at the INFO level using the default logging instance.
+// Accepts any number of arguments to format the log entry.
+//
+// Parameters:
+//   - v: Variadic arguments to be logged.
+//
+// Returns:
+//   - *Logging: A Logging instance for possible further usage.
+func Info(v ...any) *Logging {
+	return println(nil, LEVEL_INFO, default_level, 2, v...)
 }
 
-// Info Logs are printed at the INFO level
-func Info(v ...interface{}) *Logging {
-	_println(LEVEL_INFO, default_level, 2, v...)
-	return _staticLogger()
+// Warn logs a message at the WARN level using the default logging instance.
+// Accepts any number of arguments to format the log entry.
+//
+// Parameters:
+//   - v: Variadic arguments to be logged.
+//
+// Returns:
+//   - *Logging: A Logging instance for possible further usage.
+func Warn(v ...any) *Logging {
+	return println(nil, LEVEL_WARN, default_level, 2, v...)
 }
 
-// Warn Logs are printed at the WARN level
-func Warn(v ...interface{}) *Logging {
-	_println(LEVEL_WARN, default_level, 2, v...)
-	return _staticLogger()
+// Error logs a message at the ERROR level using the default logging instance.
+// Accepts any number of arguments to format the log entry.
+//
+// Parameters:
+//   - v: Variadic arguments to be logged.
+//
+// Returns:
+//   - *Logging: A Logging instance for possible further usage.
+func Error(v ...any) *Logging {
+	return println(nil, LEVEL_ERROR, default_level, 2, v...)
 }
 
-// Error Logs are printed at the ERROR level
-func Error(v ...interface{}) *Logging {
-	_println(LEVEL_ERROR, default_level, 2, v...)
-	return _staticLogger()
+// Fatal logs a message at the FATAL level using the default logging instance and may terminate the application.
+// Accepts any number of arguments to format the log entry.
+//
+// Parameters:
+//   - v: Variadic arguments to be logged.
+//
+// Returns:
+//   - *Logging: A Logging instance for possible further usage.
+func Fatal(v ...any) *Logging {
+	return println(nil, LEVEL_FATAL, default_level, 2, v...)
 }
 
-// Fatal Logs are printed at the FATAL level
-func Fatal(v ...interface{}) *Logging {
-	_println(LEVEL_FATAL, default_level, 2, v...)
-	return _staticLogger()
+// Debugf logs a formatted message at the DEBUG level using the default logging instance.
+// Takes a format string followed by variadic arguments to be formatted.
+//
+// Parameters:
+//   - format: The format string for the log entry.
+//   - v: Variadic arguments to be formatted according to the format string.
+//
+// Returns:
+//   - *Logging: A Logging instance for possible further usage.
+func Debugf(format string, v ...any) *Logging {
+	return println(&format, LEVEL_DEBUG, default_level, 2, v...)
 }
 
-func _println(level, _default_level _LEVEL, calldepth int, v ...interface{}) {
-	_staticLogger().println(level, k1(calldepth), v...)
+// Infof logs a formatted message at the INFO level using the default logging instance.
+// Takes a format string followed by variadic arguments to be formatted.
+//
+// Parameters:
+//   - format: The format string for the log entry.
+//   - v: Variadic arguments to be formatted according to the format string.
+//
+// Returns:
+//   - *Logging: A Logging instance for possible further usage.
+func Infof(format string, v ...any) *Logging {
+	return println(&format, LEVEL_INFO, default_level, 2, v...)
 }
 
-func fprintln(_format _FORMAT, level, stacktrace _LEVEL, calldepth int, formatter *string, v ...interface{}) {
-	_console(fmt.Append([]byte{}, v...), level, stacktrace, _format, k1(calldepth), formatter)
+// Warnf logs a formatted message at the WARN level using the default logging instance.
+// Takes a format string followed by variadic arguments to be formatted.
+//
+// Parameters:
+//   - format: The format string for the log entry.
+//   - v: Variadic arguments to be formatted according to the format string.
+//
+// Returns:
+//   - *Logging: A Logging instance for possible further usage.
+func Warnf(format string, v ...any) *Logging {
+	return println(&format, LEVEL_WARN, default_level, 2, v...)
 }
 
-func getlevelname(level _LEVEL) (levelname []byte) {
+// Errorf logs a formatted message at the ERROR level using the default logging instance.
+// Takes a format string followed by variadic arguments to be formatted.
+//
+// Parameters:
+//   - format: The format string for the log entry.
+//   - v: Variadic arguments to be formatted according to the format string.
+//
+// Returns:
+//   - *Logging: A Logging instance for possible further usage.
+func Errorf(format string, v ...any) *Logging {
+	return println(&format, LEVEL_ERROR, default_level, 2, v...)
+}
+
+// Fatalf logs a formatted message at the FATAL level using the default logging instance and may terminate the application.
+// Takes a format string followed by variadic arguments to be formatted.
+//
+// Parameters:
+//   - format: The format string for the log entry.
+//   - v: Variadic arguments to be formatted according to the format string.
+//
+// Returns:
+//   - *Logging: A Logging instance for possible further usage.
+func Fatalf(format string, v ...any) *Logging {
+	return println(&format, LEVEL_FATAL, default_level, 2, v...)
+}
+
+func println(format *string, level, _default_level LEVELTYPE, calldepth int, v ...any) *Logging {
+	return static_lo.println(format, level, k1(calldepth), v...)
+}
+
+func fprintln(format *string, _format _FORMAT, level, stacktrace LEVELTYPE, calldepth int, formatter *string, attrFormat *AttrFormat, v ...any) {
+	var bs []byte
+	if format == nil {
+		bs = fmt.Append([]byte{}, v...)
+	} else {
+		bs = fmt.Appendf([]byte{}, *format, v...)
+	}
+	consolewrite(bs, level, stacktrace, _format, k1(calldepth), formatter, attrFormat)
+}
+
+func getlevelname(level LEVELTYPE) (levelname []byte) {
 	switch level {
 	case LEVEL_ALL:
 		levelname = []byte("ALL")
@@ -305,7 +421,7 @@ func getlevelname(level _LEVEL) (levelname []byte) {
 
 // Logging is the primary data structure for configuring and managing logging behavior.
 type Logging struct {
-	_level        _LEVEL                    // Log level, e.g., DEBUG, INFO, WARN, ERROR, etc.
+	_level        LEVELTYPE                 // Log level, e.g., DEBUG, INFO, WARN, ERROR, etc.
 	_format       _FORMAT                   // Log format.
 	_rwLock       *sync.RWMutex             // Read-write lock for concurrent safe access to the logging struct.
 	_fileDir      string                    // Directory path where log files are stored.
@@ -321,15 +437,17 @@ type Logging struct {
 	_isConsole    bool                      // Whether to also output logs to the console.
 	_gzip         bool                      // Whether to enable GZIP compression for old log files.
 	_isTicker     int32                     // Whether to enable a ticker to periodically check the log file status.
-	stacktrace    _LEVEL                    // Log level, e.g., DEBUG, INFO, WARN, ERROR, etc.
+	stacktrace    LEVELTYPE                 // Log level, e.g., DEBUG, INFO, WARN, ERROR, etc.
 	customHandler func(lc *LogContext) bool // Custom log handler function allowing users to define additional log processing logic.
 	leveloption   [5]*LevelOption
+	attrFormat    *AttrFormat
+	err           error
 }
 
 // NewLogger creates and returns a new instance of the Logging struct.
 // This function initializes a Logging object with default values or specific configurations as needed.
 func NewLogger() (log *Logging) {
-	log = &Logging{_level: default_level, _cutmode: _TIMEMODE, _rwLock: new(sync.RWMutex), _format: default_format, _isConsole: true, _formatter: default_formatter}
+	log = &Logging{_level: default_level, _cutmode: _TIMEMODE, _rwLock: new(sync.RWMutex), _format: default_format, _isConsole: true}
 	log.newfileHandler()
 	return
 }
@@ -340,25 +458,140 @@ func (t *Logging) SetConsole(_isConsole bool) *Logging {
 	t._isConsole = _isConsole
 	return t
 }
-func (t *Logging) Debug(v ...interface{}) *Logging {
-	t.println(LEVEL_DEBUG, 2, v...)
-	return t
+
+// Debug logs a message at the DEBUG level.
+// Accepts any number of arguments to format the log entry.
+// Returns the Logging instance for method chaining.
+//
+// Parameters:
+//   - v: Variadic arguments to be logged.
+//
+// Returns:
+//   - *Logging: The current Logging instance for chaining.
+func (t *Logging) Debug(v ...any) *Logging {
+	return t.println(nil, LEVEL_DEBUG, 2, v...)
 }
-func (t *Logging) Info(v ...interface{}) *Logging {
-	t.println(LEVEL_INFO, 2, v...)
-	return t
+
+// Info logs a message at the INFO level.
+// Accepts any number of arguments to format the log entry.
+// Returns the Logging instance for method chaining.
+//
+// Parameters:
+//   - v: Variadic arguments to be logged.
+//
+// Returns:
+//   - *Logging: The current Logging instance for chaining.
+func (t *Logging) Info(v ...any) *Logging {
+	return t.println(nil, LEVEL_INFO, 2, v...)
 }
-func (t *Logging) Warn(v ...interface{}) *Logging {
-	t.println(LEVEL_WARN, 2, v...)
-	return t
+
+// Warn logs a message at the WARN level.
+// Accepts any number of arguments to format the log entry.
+// Returns the Logging instance for method chaining.
+//
+// Parameters:
+//   - v: Variadic arguments to be logged.
+//
+// Returns:
+//   - *Logging: The current Logging instance for chaining.
+func (t *Logging) Warn(v ...any) *Logging {
+	return t.println(nil, LEVEL_WARN, 2, v...)
 }
-func (t *Logging) Error(v ...interface{}) *Logging {
-	t.println(LEVEL_ERROR, 2, v...)
-	return t
+
+// Error logs a message at the ERROR level.
+// Accepts any number of arguments to format the log entry.
+// Returns the Logging instance for method chaining.
+//
+// Parameters:
+//   - v: Variadic arguments to be logged.
+//
+// Returns:
+//   - *Logging: The current Logging instance for chaining.
+func (t *Logging) Error(v ...any) *Logging {
+	return t.println(nil, LEVEL_ERROR, 2, v...)
 }
-func (t *Logging) Fatal(v ...interface{}) *Logging {
-	t.println(LEVEL_FATAL, 2, v...)
-	return t
+
+// Fatal logs a message at the FATAL level and may terminate the application.
+// Accepts any number of arguments to format the log entry.
+// Returns the Logging instance for method chaining.
+//
+// Parameters:
+//   - v: Variadic arguments to be logged.
+//
+// Returns:
+//   - *Logging: The current Logging instance for chaining.
+func (t *Logging) Fatal(v ...any) *Logging {
+	return t.println(nil, LEVEL_FATAL, 2, v...)
+}
+
+// Debugf logs a formatted message at the DEBUG level.
+// Takes a format string followed by variadic arguments to be formatted.
+// Returns the Logging instance for method chaining.
+//
+// Parameters:
+//   - format: The format string for the log entry.
+//   - v: Variadic arguments to be formatted according to the format string.
+//
+// Returns:
+//   - *Logging: The current Logging instance for chaining.
+func (t *Logging) Debugf(format string, v ...any) *Logging {
+	return t.println(&format, LEVEL_DEBUG, 2, v...)
+}
+
+// Infof logs a formatted message at the INFO level.
+// Takes a format string followed by variadic arguments to be formatted.
+// Returns the Logging instance for method chaining.
+//
+// Parameters:
+//   - format: The format string for the log entry.
+//   - v: Variadic arguments to be formatted according to the format string.
+//
+// Returns:
+//   - *Logging: The current Logging instance for chaining.
+func (t *Logging) Infof(format string, v ...any) *Logging {
+	return t.println(&format, LEVEL_INFO, 2, v...)
+}
+
+// Warnf logs a formatted message at the WARN level.
+// Takes a format string followed by variadic arguments to be formatted.
+// Returns the Logging instance for method chaining.
+//
+// Parameters:
+//   - format: The format string for the log entry.
+//   - v: Variadic arguments to be formatted according to the format string.
+//
+// Returns:
+//   - *Logging: The current Logging instance for chaining.
+func (t *Logging) Warnf(format string, v ...any) *Logging {
+	return t.println(&format, LEVEL_WARN, 2, v...)
+}
+
+// Errorf logs a formatted message at the ERROR level.
+// Takes a format string followed by variadic arguments to be formatted.
+// Returns the Logging instance for method chaining.
+//
+// Parameters:
+//   - format: The format string for the log entry.
+//   - v: Variadic arguments to be formatted according to the format string.
+//
+// Returns:
+//   - *Logging: The current Logging instance for chaining.
+func (t *Logging) Errorf(format string, v ...any) *Logging {
+	return t.println(&format, LEVEL_ERROR, 2, v...)
+}
+
+// Fatalf logs a formatted message at the FATAL level and may terminate the application.
+// Takes a format string followed by variadic arguments to be formatted.
+// Returns the Logging instance for method chaining.
+//
+// Parameters:
+//   - format: The format string for the log entry.
+//   - v: Variadic arguments to be formatted according to the format string.
+//
+// Returns:
+//   - *Logging: The current Logging instance for chaining.
+func (t *Logging) Fatalf(format string, v ...any) *Logging {
+	return t.println(&format, LEVEL_FATAL, 2, v...)
 }
 
 func (t *Logging) WriteBin(bs []byte) (bakfn string, err error) {
@@ -369,7 +602,7 @@ func (t *Logging) WriteBin(bs []byte) (bakfn string, err error) {
 		}
 		if openFileErr == nil {
 			t._rwLock.RLock()
-			_, err = t._filehandler.write2file(bs)
+			_, err = t._filehandler.write(bs)
 			t._rwLock.RUnlock()
 		}
 	} else {
@@ -385,7 +618,7 @@ func (t *Logging) Write(bs []byte) (n int, err error) {
 		}
 		if openFileErr == nil {
 			t._rwLock.RLock()
-			n, err = t._filehandler.write2file(bs)
+			n, err = t._filehandler.write(bs)
 			t._rwLock.RUnlock()
 		}
 	} else {
@@ -394,16 +627,39 @@ func (t *Logging) Write(bs []byte) (n int, err error) {
 	return
 }
 
+// SetFormat sets the logging format to the specified format type.
+//
+// Parameters:
+//   - format: The desired format for log entries, represented by the _FORMAT type.
+//
+// Returns:
+//   - *Logging: A Logging instance to enable method chaining.
 func (t *Logging) SetFormat(format _FORMAT) *Logging {
 	t._format = format
 	return t
 }
 
-func (t *Logging) SetLevel(level _LEVEL) *Logging {
+// SetLevel sets the logging level to the specified level type.
+//
+// Parameters:
+//   - level: The logging level (e.g., DEBUG, INFO, WARN), represented by the LEVELTYPE type.
+//
+// Returns:
+//   - *Logging: A Logging instance to enable method chaining.
+func (t *Logging) SetLevel(level LEVELTYPE) *Logging {
 	t._level = level
 	return t
 }
 
+// SetFormatter specifies a custom format string for the logging output.
+//
+//	default:  "{level}{time} {file} {message}\n"
+//
+// Parameters:
+//   - formatter: A string defining the format for log entries, allowing custom log entry layouts.
+//
+// Returns:
+//   - *Logging: A Logging instance to enable method chaining.
 func (t *Logging) SetFormatter(formatter string) *Logging {
 	t._formatter = formatter
 	return t
@@ -445,6 +701,7 @@ func (t *Logging) SetRollingFileLoop(fileDir, fileName string, maxFileSize int64
 	if err = t._filehandler.openFileHandler(); err == nil {
 		t._isFileWell = true
 	}
+	t.err = err
 	return t, err
 }
 
@@ -454,13 +711,12 @@ func (t *Logging) SetRollingFileLoop(fileDir, fileName string, maxFileSize int64
 // 按日期分割日志文件
 // fileDir 日志文件夹路径
 // fileName 日志文件名
-func (t *Logging) SetRollingDaily(fileDir, fileName string) (l *Logging, err error) {
+func (t *Logging) SetRollingDaily(fileDir, fileName string) (*Logging, error) {
 	return t.SetRollingByTime(fileDir, fileName, MODE_DAY)
 }
 
 // SetRollingByTime
 //
-// Use SetOption() instead.
 // 指定按 小时，天，月 分割日志文件
 // fileDir 日志文件夹路径
 // fileName 日志文件名
@@ -480,12 +736,13 @@ func (t *Logging) SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (l
 	if err = t._filehandler.openFileHandler(); err == nil {
 		t._isFileWell = true
 		go t.ticker(func() {
-			defer catchError()
+			defer recoverable(nil)
 			if t._filehandler.mustBackUp() {
 				t.backUp()
 			}
 		})
 	}
+	t.err = err
 	return t, err
 }
 
@@ -512,10 +769,17 @@ func (t *Logging) SetOption(option *Option) *Logging {
 	if option.Format == 0 {
 		option.Format = default_format
 	}
-	if option.Formatter == "" {
-		option.Formatter = default_formatter
+	//if option.Formatter == "" {
+	//	option.Formatter = default_formatter
+	//}
+	if option.Formatter != "" {
+		t._formatter = option.Formatter
 	}
-	t._formatter = option.Formatter
+
+	if option.AttrFormat != nil {
+		t.attrFormat = option.AttrFormat
+	}
+
 	t._isConsole = option.Console
 	t._format = option.Format
 
@@ -544,6 +808,8 @@ func (t *Logging) SetOption(option *Option) *Logging {
 			t.newfileHandler()
 			if err := t._filehandler.openFileHandler(); err == nil {
 				t._isFileWell = true
+			} else {
+				t.err = err
 			}
 		} else {
 			if dirPath == "" {
@@ -561,11 +827,13 @@ func (t *Logging) SetOption(option *Option) *Logging {
 			if err := t._filehandler.openFileHandler(); err == nil {
 				t._isFileWell = true
 				go t.ticker(func() {
-					defer catchError()
+					defer recoverable(nil)
 					if t._filehandler.mustBackUp() {
 						t.backUp()
 					}
 				})
+			} else {
+				t.err = err
 			}
 		}
 	}
@@ -584,26 +852,41 @@ func (t *Logging) backUp() (bakfn string, err, openFileErr error) {
 		return
 	}
 	if err = t._filehandler.close(); err != nil {
-		fprintln(t._format, LEVEL_ERROR, t.stacktrace, 1, nil, err.Error())
+		fprintln(nil, t._format, LEVEL_ERROR, t.stacktrace, 1, nil, nil, err.Error())
 		return
 	}
-	if bakfn, err = t._filehandler.rename(); err != nil {
-		fprintln(t._format, LEVEL_ERROR, t.stacktrace, 1, nil, err.Error())
-		return
+	for i := 0; i < 16; i++ {
+		if bakfn, err = t._filehandler.rename(); err != nil {
+			fprintln(nil, t._format, LEVEL_ERROR, t.stacktrace, 1, nil, nil, err.Error())
+			<-time.After(time.Millisecond)
+		} else {
+			break
+		}
 	}
 	if openFileErr = t._filehandler.openFileHandler(); openFileErr != nil {
-		fprintln(t._format, LEVEL_ERROR, t.stacktrace, 1, nil, openFileErr.Error())
+		fprintln(nil, t._format, LEVEL_ERROR, t.stacktrace, 1, nil, nil, openFileErr.Error())
+		t.err = openFileErr
 	}
 	return
 }
 
-func (t *Logging) println(_level _LEVEL, calldepth int, v ...interface{}) {
+func (t *Logging) println(format *string, _level LEVELTYPE, calldepth int, v ...any) *Logging {
 	if t._level > _level {
-		return
+		return t
+	}
+	if t.err != nil {
+		return t
 	}
 	if t.customHandler != nil && !t.customHandler(&LogContext{Level: _level, Args: v}) {
-		return
+		return t
 	}
+	var buf *buffer.Buffer
+	defer func() {
+		if buf != nil {
+			buf.Free()
+		}
+	}()
+	var bs []byte
 	if t._isFileWell {
 		var openFileErr error
 		if t._filehandler.mustBackUp() {
@@ -611,39 +894,68 @@ func (t *Logging) println(_level _LEVEL, calldepth int, v ...interface{}) {
 		}
 		if openFileErr == nil {
 			if t._format != FORMAT_NANO {
-				bs := fmt.Append([]byte{}, v...)
-				var buf *buffer.Buffer
-				if ol := t.leveloption[_level-1]; ol != nil {
-					buf = getOutBuffer(bs, _level, ol.Format, k1(calldepth), &ol.Formatter, t.stacktrace)
+				if format == nil {
+					bs = fmt.Append([]byte{}, v...)
 				} else {
-					buf = getOutBuffer(bs, _level, t._format, k1(calldepth), &t._formatter, t.stacktrace)
+					bs = fmt.Appendf([]byte{}, *format, v...)
 				}
-				t._rwLock.RLock()
-				t._filehandler.write2file(buf.Bytes())
-				t._rwLock.RUnlock()
-				buf.Free()
+				if ol := t.leveloption[_level-1]; ol != nil {
+					buf = getOutBuffer(bs, _level, ol.Format, k1(calldepth), &ol.Formatter, t.stacktrace, t.attrFormat)
+				} else {
+					buf = getOutBuffer(bs, _level, t._format, k1(calldepth), &t._formatter, t.stacktrace, t.attrFormat)
+				}
+				if t.attrFormat != nil && t.attrFormat.SetBodyFmt != nil {
+					bs = t.attrFormat.SetBodyFmt(_level, buf.Bytes())
+				} else {
+					bs = buf.Bytes()
+				}
+				//t._rwLock.RLock()
+				//t._filehandler.write(bs)
+				//if t.attrFormat != nil && t.attrFormat.SetBodyFmt != nil {
+				//	t._filehandler.write(t.attrFormat.SetBodyFmt(_level, buf.Bytes()))
+				//} else {
+				//	t._filehandler.write(buf.Bytes())
+				//}
+				//t._rwLock.RUnlock()
 			} else {
-				t._rwLock.RLock()
-				t._filehandler.write2file(fmt.Appendln([]byte{}, v...))
-				t._rwLock.RUnlock()
+				if format == nil {
+					bs = fmt.Appendln([]byte{}, v...)
+				} else {
+					bs = fmt.Appendf([]byte{}, *format+"\n", v...)
+				}
+				//t._rwLock.RLock()
+				//t._filehandler.write(append(bs, '\n'))
+				//t._rwLock.RUnlock()
 			}
+
+			t._rwLock.RLock()
+			t._filehandler.write(bs)
+			t._rwLock.RUnlock()
 		}
 	}
 	if t._isConsole {
-		if ol := t.leveloption[_level-1]; ol != nil {
-			fprintln(ol.Format, _level, t.stacktrace, k1(calldepth), &ol.Formatter, v...)
+		if bs != nil {
+			//if t.attrFormat != nil && t.attrFormat.SetBodyFmt != nil {
+			//	consolewriter(t.attrFormat.SetBodyFmt(_level, buf.Bytes()), false)
+			//} else {
+			consolewriter(bs, false)
+			//}
 		} else {
-			fprintln(t._format, _level, t.stacktrace, k1(calldepth), &t._formatter, v...)
+			if ol := t.leveloption[_level-1]; ol != nil {
+				fprintln(format, ol.Format, _level, t.stacktrace, k1(calldepth), &ol.Formatter, t.attrFormat, v...)
+			} else {
+				fprintln(format, t._format, _level, t.stacktrace, k1(calldepth), &t._formatter, t.attrFormat, v...)
+			}
 		}
-
 	}
+	return t
 }
 
-func SetLevelOption(level _LEVEL, option *LevelOption) *Logging {
-	return _staticLogger().SetLevelOption(level, option)
+func SetLevelOption(level LEVELTYPE, option *LevelOption) *Logging {
+	return static_lo.SetLevelOption(level, option)
 }
 
-func (t *Logging) SetLevelOption(level _LEVEL, option *LevelOption) *Logging {
+func (t *Logging) SetLevelOption(level LEVELTYPE, option *LevelOption) *Logging {
 	if level > LEVEL_ALL && level < LEVEL_OFF {
 		t.leveloption[level-1] = option
 	}
@@ -651,17 +963,18 @@ func (t *Logging) SetLevelOption(level _LEVEL, option *LevelOption) *Logging {
 }
 
 type fileHandler struct {
-	_fileDir    string
-	_fileName   string
-	_maxSize    int64
-	_fileSize   int64
-	_unit       _UNIT
-	_fileHandle *os.File
-	_cutmode    _CUTMODE
-	_maxbackup  int
-	_mode       _MODE_TIME
-	_gzip       bool
-	_lastPrint  int64
+	fileHandle File
+	_fileDir   string
+	_fileName  string
+	file       *os.File
+	_maxSize   int64
+	_fileSize  int64
+	_lastPrint int64
+	_unit      _UNIT
+	_cutmode   _CUTMODE
+	_maxbackup int
+	_gzip      bool
+	_mode      _MODE_TIME
 }
 
 func (t *fileHandler) openFileHandler() (e error) {
@@ -669,17 +982,19 @@ func (t *fileHandler) openFileHandler() (e error) {
 		e = errors.New("log filePath is null or error")
 		return
 	}
-	e = mkdirDir(t._fileDir)
+	e = mkdirAll(t._fileDir)
 	if e != nil {
 		return
 	}
 	fname := filepath.Join(t._fileDir, t._fileName)
-	t._fileHandle, e = os.OpenFile(fname, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+	if t.file, e = os.OpenFile(fname, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666); e == nil {
+		t.fileHandle, e = New(t.file)
+	}
 	if e != nil {
-		fprintln(default_format, LEVEL_ERROR, 0, 1, nil, e.Error())
+		fprintln(nil, default_format, LEVEL_ERROR, 0, 1, nil, nil, e.Error())
 		return
 	}
-	if fs, err := t._fileHandle.Stat(); err == nil {
+	if fs, err := t.file.Stat(); err == nil {
 		t._fileSize = fs.Size()
 		t._lastPrint = fs.ModTime().Unix()
 	} else {
@@ -692,13 +1007,15 @@ func (t *fileHandler) addFileSize(size int64) {
 	atomic.AddInt64(&t._fileSize, size)
 }
 
-func (t *fileHandler) write2file(bs []byte) (n int, e error) {
-	defer catchError()
+func (t *fileHandler) write(bs []byte) (n int, e error) {
+	defer recoverable(&e)
 	if bs != nil {
-		if n, e = _write2file(t._fileHandle, bs); e == nil {
-			t.addFileSize(int64(n))
+		if n, e = t.fileHandle.Write(bs); e == nil {
+			if n > 0 {
+				t.addFileSize(int64(n))
+			}
 			if t._cutmode == _TIMEMODE {
-				t._lastPrint = _time().Unix()
+				t._lastPrint = loctime().Unix()
 			}
 		}
 	}
@@ -729,7 +1046,7 @@ func (t *fileHandler) rename() (bckupfilename string, err error) {
 		newPath := filepath.Join(t._fileDir, bckupfilename)
 		if err = os.Rename(oldPath, newPath); err == nil {
 			go func() {
-				defer catchError()
+				defer recoverable(nil)
 				if t._gzip {
 					if err = lgzip(newPath+".gz", bckupfilename, newPath); err == nil {
 						os.Remove(newPath)
@@ -745,15 +1062,17 @@ func (t *fileHandler) rename() (bckupfilename string, err error) {
 }
 
 func (t *fileHandler) close() (err error) {
-	defer catchError()
-	if t._fileHandle != nil {
-		err = t._fileHandle.Close()
+	defer recoverable(&err)
+	if t.fileHandle != nil {
+		err = t.fileHandle.Close()
+	} else if t.file != nil {
+		err = t.file.Close()
 	}
 	return
 }
 
 //func tomorSecond(mode _MODE_TIME) int64 {
-//	now := _time()
+//	now := loctime()
 //	switch mode {
 //	case MODE_DAY:
 //		return time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location()).Unix()
@@ -767,7 +1086,7 @@ func (t *fileHandler) close() (err error) {
 //}
 
 func isCurrentTime(mode _MODE_TIME, timestamp int64) bool {
-	now := _time()
+	now := loctime()
 	switch mode {
 	case MODE_DAY:
 		return timestamp >= time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).Unix()
@@ -791,7 +1110,7 @@ func backupStr4Time(mode _MODE_TIME, now time.Time) string {
 }
 
 //func _yestStr(mode _MODE_TIME, now time.Time) string {
-//	//now := _time()
+//	//now := loctime()
 //	switch mode {
 //	case MODE_DAY:
 //		return now.AddDate(0, 0, -1).Format(_DATEFORMAT_DAY)
@@ -852,7 +1171,7 @@ func getBackupRollFileName(dir, filename string, isGzip bool) (bckupfilename str
 		if isGzip {
 			pattern = fmt.Sprint(`^`, fname, `_[\d]{1,}`, suffix, `.gz$`)
 		}
-		if _matchString(pattern, fd.Name()) {
+		if matchString(pattern, fd.Name()) {
 			i++
 		}
 	}
@@ -874,18 +1193,29 @@ func _getBackupfilename(count int, dir, filename, suffix string, isGzip bool) (b
 	return
 }
 
-func _write2file(f *os.File, bs []byte) (n int, e error) {
-	n, e = f.Write(bs)
-	return
+func consolewrite(s []byte, level, stacktrace LEVELTYPE, flag _FORMAT, calldepth int, formatter *string, attrFormat *AttrFormat) {
+	if flag != FORMAT_NANO {
+		buf := getOutBuffer(s, level, flag, k1(calldepth), formatter, stacktrace, attrFormat)
+		defer buf.Free()
+		if attrFormat != nil && attrFormat.SetBodyFmt != nil {
+			consolewriter(attrFormat.SetBodyFmt(level, buf.Bytes()), false)
+		} else {
+			consolewriter(buf.Bytes(), false)
+		}
+	} else {
+		if attrFormat != nil && attrFormat.SetBodyFmt != nil {
+			consolewriter(attrFormat.SetBodyFmt(level, s), false)
+		} else {
+			consolewriter(s, true)
+		}
+	}
 }
 
-func _console(s []byte, level, stacktrace _LEVEL, flag _FORMAT, calldepth int, formatter *string) {
-	if flag != FORMAT_NANO {
-		buf := getOutBuffer(s, level, flag, k1(calldepth), formatter, stacktrace)
-		fmt.Print(string(buf.Bytes()))
-		buf.Free()
+func consolewriter(bs []byte, newline bool) {
+	if newline {
+		os.Stdout.Write(append(bs, '\n'))
 	} else {
-		fmt.Println(string(s))
+		os.Stdout.Write(bs)
 	}
 }
 
@@ -893,32 +1223,21 @@ func k1(calldepth int) int {
 	return calldepth + 1
 }
 
-func getOutBuffer(s []byte, level _LEVEL, format _FORMAT, calldepth int, formatter *string, stacktrace _LEVEL) *buffer.Buffer {
-	return output(format, k1(calldepth), s, level, formatter, stacktrace)
+func getOutBuffer(s []byte, level LEVELTYPE, format _FORMAT, calldepth int, formatter *string, stacktrace LEVELTYPE, attrFormat *AttrFormat) *buffer.Buffer {
+	return output(format, k1(calldepth), s, level, formatter, stacktrace, attrFormat)
 }
 
-func mkdirDir(dir string) (e error) {
+func mkdirAll(dir string) (e error) {
 	_, er := os.Stat(dir)
 	b := er == nil || os.IsExist(er)
 	if !b {
-		if err := os.MkdirAll(dir, 0777); err != nil {
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 			if os.IsPermission(err) {
 				e = err
 			}
 		}
 	}
 	return
-}
-
-func isFileExist(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil || os.IsExist(err)
-}
-
-func catchError() {
-	if err := recover(); err != nil {
-		fmt.Println(string(debug.Stack()))
-	}
 }
 
 func maxbuckup(dir, filename string, maxcount int) {
@@ -935,7 +1254,7 @@ func maxbuckup(dir, filename string, maxcount int) {
 			for _, entry := range entries {
 				if !entry.IsDir() {
 					parrent := fmt.Sprint("^", name, "(_\\d+){0,}", "_\\d+", ext, "(\\.gz){0,}$")
-					if _matchString(parrent, entry.Name()) {
+					if matchString(parrent, entry.Name()) {
 						filePath := filepath.Join(dir, entry.Name())
 						rms = append(rms, filePath)
 					}
@@ -950,7 +1269,20 @@ func maxbuckup(dir, filename string, maxcount int) {
 	}
 }
 
-func _matchString(pattern string, s string) bool {
+func isFileExist(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil || os.IsExist(err)
+}
+
+func recoverable(err *error) {
+	if e := recover(); e != nil {
+		if err != nil {
+			*err = fmt.Errorf("%v", e)
+		}
+	}
+}
+
+func matchString(pattern string, s string) bool {
 	b, err := regexp.MatchString(pattern, s)
 	if err != nil {
 		b = false
@@ -958,7 +1290,7 @@ func _matchString(pattern string, s string) bool {
 	return b
 }
 
-func _time() time.Time {
+func loctime() time.Time {
 	if TIME_DEVIATION != 0 {
 		return time.Now().Add(TIME_DEVIATION)
 	} else {
@@ -986,50 +1318,67 @@ func lgzip(gzfile, gzname, srcfile string) (err error) {
 
 var m = hashmap.NewLimitHashMap[uintptr, runtime.Frame](1 << 13)
 
-func output(flag _FORMAT, calldepth int, s []byte, level _LEVEL, formatter *string, stacktrace _LEVEL) (buf *buffer.Buffer) {
+func output(flag _FORMAT, calldepth int, s []byte, level LEVELTYPE, formatter *string, stacktrace LEVELTYPE, attrFormat *AttrFormat) (buf *buffer.Buffer) {
 	var callstack *callStack
 	if flag&(FORMAT_SHORTFILENAME|FORMAT_LONGFILENAME|FORMAT_RELATIVEFILENAME) != 0 {
 		callstack = collectCallStack(k1(calldepth), flag&FORMAT_FUNC != 0, callstack, stacktrace > LEVEL_ALL && stacktrace <= level)
 	}
-	return formatmsg(s, _time(), callstack, flag, level, formatter)
+	return formatmsg(s, loctime(), callstack, flag, level, formatter, attrFormat)
 }
 
-func formatmsg(msg []byte, t time.Time, callstack *callStack, flag _FORMAT, level _LEVEL, formatter *string) (buf *buffer.Buffer) {
+func formatmsg(msg []byte, t time.Time, callstack *callStack, flag _FORMAT, level LEVELTYPE, formatter *string, attrFormat *AttrFormat) (buf *buffer.Buffer) {
 	buf = buffer.NewBufferByPool()
 	var levelbuf *buffer.Buffer
 	var timebuf *buffer.Buffer
 	var filebuf *buffer.Buffer
-	is_default_formatter := formatter == nil || (formatter != nil && (*formatter == default_formatter || *formatter == ""))
+	is_default_formatter := formatter == nil || (formatter != nil && *formatter == "")
 	if is_default_formatter {
 		levelbuf, timebuf, filebuf = buf, buf, buf
 	} else {
-		levelbuf = buffer.NewBuffer()
-		timebuf = buffer.NewBuffer()
+		levelbuf = buffer.NewBufferWithCapacity(7)
+		timebuf = buffer.NewBufferWithCapacity(20)
 		filebuf = buffer.NewBuffer()
 	}
 	if flag&FORMAT_LEVELFLAG != 0 {
-		levelbuf.Write(getlevelname(level))
+		if attrFormat != nil && attrFormat.SetLevelFmt != nil {
+			levelbuf.WriteString(attrFormat.SetLevelFmt(level))
+		} else {
+			levelbuf.Write(getlevelname(level))
+		}
 	}
 	if flag&(FORMAT_DATE|FORMAT_TIME|FORMAT_MICROSECONDS) != 0 {
-		if flag&FORMAT_DATE != 0 {
-			year, month, day := t.Date()
-			itoa(timebuf, year, 4)
-			timebuf.WriteByte('/')
-			itoa(timebuf, int(month), 2)
-			timebuf.WriteByte('/')
-			itoa(timebuf, day, 2)
-			timebuf.WriteByte(' ')
-		}
-		if flag&(FORMAT_TIME|FORMAT_MICROSECONDS) != 0 {
-			hour, min, sec := t.Clock()
-			itoa(timebuf, hour, 2)
-			timebuf.WriteByte(':')
-			itoa(timebuf, min, 2)
-			timebuf.WriteByte(':')
-			itoa(timebuf, sec, 2)
-			if flag&FORMAT_MICROSECONDS != 0 {
-				timebuf.WriteByte('.')
-				itoa(timebuf, t.Nanosecond()/1e3, 6)
+		if attrFormat != nil && attrFormat.SetTimeFmt != nil {
+			datestr, timestr, microsecond := attrFormat.SetTimeFmt()
+			if flag&FORMAT_DATE != 0 && datestr != "" {
+				timebuf.WriteString(datestr)
+			}
+			if flag&(FORMAT_TIME|FORMAT_MICROSECONDS) != 0 {
+				timebuf.WriteString(timestr)
+				if flag&FORMAT_MICROSECONDS != 0 {
+					timebuf.WriteString(microsecond)
+				}
+			}
+		} else {
+			if flag&FORMAT_DATE != 0 {
+				year, month, day := t.Date()
+				timebuf.Write(itoa(year, 4))
+				timebuf.WriteByte('/')
+				timebuf.Write(itoa(int(month), 2))
+				timebuf.WriteByte('/')
+				timebuf.Write(itoa(day, 2))
+				timebuf.WriteByte(' ')
+			}
+			if flag&(FORMAT_TIME|FORMAT_MICROSECONDS) != 0 {
+				hour, min, sec := t.Clock()
+				timebuf.Write(itoa(hour, 2))
+				timebuf.WriteByte(':')
+				timebuf.Write(itoa(min, 2))
+				timebuf.WriteByte(':')
+				timebuf.Write(itoa(sec, 2))
+				if flag&FORMAT_MICROSECONDS != 0 {
+					timebuf.WriteByte('.')
+					timebuf.Write(itoa(t.Nanosecond()/1e3, 6))
+				}
 			}
 		}
 		if is_default_formatter {
@@ -1039,6 +1388,7 @@ func formatmsg(msg []byte, t time.Time, callstack *callStack, flag _FORMAT, leve
 	if flag&(FORMAT_SHORTFILENAME|FORMAT_LONGFILENAME|FORMAT_RELATIVEFILENAME) != 0 {
 		if callstack != nil {
 			callstack.Pop(flag, filebuf)
+			callStackPool.Put(&callstack)
 		}
 		if is_default_formatter {
 			filebuf.WriteByte(' ')
@@ -1086,7 +1436,7 @@ func parseAndFormatLog(formatStr *string, buf, levelbuf, timebuf, filebuf *buffe
 	}
 }
 
-func itoa(buf *buffer.Buffer, i int, wid int) {
+func itoa(i int, wid int) []byte {
 	var b [20]byte
 	bp := len(b) - 1
 	for i >= 10 || wid > 1 {
@@ -1097,7 +1447,7 @@ func itoa(buf *buffer.Buffer, i int, wid int) {
 		i = q
 	}
 	b[bp] = byte('0' + i)
-	buf.Write(b[bp:])
+	return b[bp:]
 }
 
 func (t *Logging) ticker(fn func()) {
