@@ -1,7 +1,9 @@
-// Copyright (c) 2023, donnie <donnie4w@gmail.com>
+// Copyright (c) 2014, donnie <donnie4w@gmail.com>
 // All rights reserved.
 // Use of t source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+//
+// github.com/donnie4w/go-logger
 
 package logger
 
@@ -75,26 +77,111 @@ func (f *FileTimeMode) Compress() bool {
 // Option represents a configuration option for the Logging struct.
 // It includes various settings such as log level, console output, format, formatter, file options, and a custom handler.
 type Option struct {
-	Level      _LEVEL     // Log level, e.g., DEBUG, INFO, WARN, ERROR, etc.
+	Level      LEVELTYPE  // Log level, e.g., DEBUG, INFO, WARN, ERROR, etc.
 	Console    bool       // Whether to also output logs to the console.
 	Format     _FORMAT    // Log format.
 	Formatter  string     // Formatting string for customizing the log output format.
 	FileOption FileOption // File-specific options for the log handler.
-	Stacktrace _LEVEL     // Log level, e.g., DEBUG, INFO, WARN, ERROR, etc.
+	Stacktrace LEVELTYPE  // Log level, e.g., DEBUG, INFO, WARN, ERROR, etc.
 	// CustomHandler
 	//
 	// When customHandler returns false, the println function returns without executing further prints. Returning true allows the subsequent print operations to continue.
 	//
 	// customHandler返回false时，println函数返回，不再执行后续的打印，返回true时，继续执行后续打印。
 	CustomHandler func(lc *LogContext) bool // Custom log handler function allowing users to define additional log processing logic.
+
+	AttrFormat *AttrFormat
 }
 
 type LogContext struct {
-	Level _LEVEL
+	Level LEVELTYPE
 	Args  []any
 }
 
 type LevelOption struct {
 	Format    _FORMAT // Log format.
 	Formatter string  // Formatting string for customizing the log output format.
+}
+
+// AttrFormat defines a set of customizable formatting functions for log entries.
+// This structure allows users to specify custom formats for log levels, timestamps,
+// and message bodies, enabling highly flexible log formatting.
+//
+// Example usage:
+//
+//	attrFormat := &AttrFormat{
+//	    SetLevelFmt: func(level LEVELTYPE) string {
+//	        switch level {
+//	        case LEVEL_DEBUG:
+//	            return "DEBUG:"
+//	        case LEVEL_INFO:
+//	            return "INFO :"
+//	        case LEVEL_WARN:
+//	            return "WARN :"
+//	        case LEVEL_ERROR:
+//	            return "ERROR:"
+//	        case LEVEL_FATAL:
+//	            return "FATAL:"
+//	        default:
+//	            return "UNKNOWN:"
+//	        }
+//	    },
+//	    SetTimeFmt: func() (string, string, string) {
+//	        now := time.Now().Format("2006-01-02 15:04:05")
+//	        return now, "", ""
+//	    },
+//	    SetBodyFmt: func(level LEVELTYPE, msg []byte) []byte {
+//	        switch level {
+//	        case LEVEL_DEBUG:
+//	            return append([]byte("\033[34m"), append(msg, '\033', '[', '0', 'm')...) // Blue for DEBUG
+//	        case LEVEL_INFO:
+//	            return append([]byte("\033[32m"), append(msg, '\033', '[', '0', 'm')...) // Green for INFO
+//	        case LEVEL_WARN:
+//	            return append([]byte("\033[33m"), append(msg, '\033', '[', '0', 'm')...) // Yellow for WARN
+//	        case LEVEL_ERROR:
+//	            return append([]byte("\033[31m"), append(msg, '\033', '[', '0', 'm')...) // Red for ERROR
+//	        case LEVEL_FATAL:
+//	            return append([]byte("\033[41m"), append(msg, '\033', '[', '0', 'm')...) // Red background for FATAL
+//	        default:
+//	            return msg
+//	        }
+//	    },
+//	}
+type AttrFormat struct {
+	// SetLevelFmt defines a function to format log levels.
+	// This function receives a log level of type LEVELTYPE and returns a formatted string.
+	// The string represents the level prefix in log entries, such as "DEBUG:" for debug level or "FATAL:" for fatal level.
+	//
+	// Example:
+	//   SetLevelFmt: func(level LEVELTYPE) string {
+	//       if level == LEVEL_DEBUG {
+	//           return "DEBUG:"
+	//       }
+	//       return "INFO:"
+	//   }
+	SetLevelFmt func(level LEVELTYPE) string
+
+	// SetTimeFmt defines a function to format timestamps for log entries.
+	// This function returns three strings representing different components of a timestamp.
+	// It allows custom handling of dates, times, or other time-based information.
+	//
+	// Example:
+	//   SetTimeFmt: func() (string, string, string) {
+	//       currentTime := time.Now().Format("2006-01-02 15:04:05")
+	//       return currentTime, "", ""
+	//   }
+	SetTimeFmt func() (string, string, string)
+
+	// SetBodyFmt defines a function to customize the format of log message bodies.
+	// This function receives the log level and the message body in byte slice format, allowing
+	// modifications such as adding colors, handling line breaks, or appending custom suffixes.
+	//
+	// Example:
+	//   SetBodyFmt: func(level LEVELTYPE, msg []byte) []byte {
+	//       if level == LEVEL_ERROR {
+	//           return append([]byte("ERROR MESSAGE: "), msg...)
+	//       }
+	//       return msg
+	//   }
+	SetBodyFmt func(level LEVELTYPE, msg []byte) []byte
 }
