@@ -1,7 +1,9 @@
-// Copyright (c) 2023, donnie <donnie4w@gmail.com>
+// Copyright (c) 2014, donnie <donnie4w@gmail.com>
 // All rights reserved.
 // Use of t source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+//
+// github.com/donnie4w/go-logger
 
 package logger
 
@@ -46,7 +48,7 @@ func getfileInfo(flag *_FORMAT, fileName *string, line *int, funcName *string, f
 			filebuf.WriteString(*funcName)
 		}
 		filebuf.WriteByte(':')
-		itoa(filebuf, *line, -1)
+		filebuf.Write(itoa(*line, -1))
 	}
 }
 
