@@ -597,7 +597,7 @@ func (t *Logging) Fatalf(format string, v ...any) *Logging {
 func (t *Logging) WriteBin(bs []byte) (bakfn string, err error) {
 	if t._isFileWell {
 		var openFileErr error
-		if t._filehandler.mustBackUp() {
+		if t._filehandler.mustBackUp(len(bs)) {
 			bakfn, err, openFileErr = t.backUp()
 		}
 		if openFileErr == nil {
@@ -613,7 +613,7 @@ func (t *Logging) WriteBin(bs []byte) (bakfn string, err error) {
 func (t *Logging) Write(bs []byte) (n int, err error) {
 	if t._isFileWell {
 		var openFileErr error
-		if t._filehandler.mustBackUp() {
+		if t._filehandler.mustBackUp(len(bs)) {
 			_, err, openFileErr = t.backUp()
 		}
 		if openFileErr == nil {
@@ -737,7 +737,7 @@ func (t *Logging) SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (l
 		t._isFileWell = true
 		go t.ticker(func() {
 			defer recoverable(nil)
-			if t._filehandler.mustBackUp() {
+			if t._filehandler.mustBackUp(0) {
 				t.backUp()
 			}
 		})
@@ -828,7 +828,7 @@ func (t *Logging) SetOption(option *Option) *Logging {
 				t._isFileWell = true
 				go t.ticker(func() {
 					defer recoverable(nil)
-					if t._filehandler.mustBackUp() {
+					if t._filehandler.mustBackUp(0) {
 						t.backUp()
 					}
 				})
@@ -848,7 +848,7 @@ func (t *Logging) newfileHandler() {
 func (t *Logging) backUp() (bakfn string, err, openFileErr error) {
 	t._rwLock.Lock()
 	defer t._rwLock.Unlock()
-	if !t._filehandler.mustBackUp() {
+	if !t._filehandler.mustBackUp(0) {
 		return
 	}
 	if err = t._filehandler.close(); err != nil {
@@ -888,46 +888,34 @@ func (t *Logging) println(format *string, _level LEVELTYPE, calldepth int, v ...
 	}()
 	var bs []byte
 	if t._isFileWell {
+		if t._format != FORMAT_NANO {
+			if format == nil {
+				bs = fmt.Append([]byte{}, v...)
+			} else {
+				bs = fmt.Appendf([]byte{}, *format, v...)
+			}
+			if ol := t.leveloption[_level-1]; ol != nil {
+				buf = getOutBuffer(bs, _level, ol.Format, k1(calldepth), &ol.Formatter, t.stacktrace, t.attrFormat)
+			} else {
+				buf = getOutBuffer(bs, _level, t._format, k1(calldepth), &t._formatter, t.stacktrace, t.attrFormat)
+			}
+			if t.attrFormat != nil && t.attrFormat.SetBodyFmt != nil {
+				bs = t.attrFormat.SetBodyFmt(_level, buf.Bytes())
+			} else {
+				bs = buf.Bytes()
+			}
+		} else {
+			if format == nil {
+				bs = fmt.Appendln([]byte{}, v...)
+			} else {
+				bs = fmt.Appendf([]byte{}, *format+"\n", v...)
+			}
+		}
 		var openFileErr error
-		if t._filehandler.mustBackUp() {
+		if t._filehandler.mustBackUp(len(bs)) {
 			_, openFileErr, _ = t.backUp()
 		}
 		if openFileErr == nil {
-			if t._format != FORMAT_NANO {
-				if format == nil {
-					bs = fmt.Append([]byte{}, v...)
-				} else {
-					bs = fmt.Appendf([]byte{}, *format, v...)
-				}
-				if ol := t.leveloption[_level-1]; ol != nil {
-					buf = getOutBuffer(bs, _level, ol.Format, k1(calldepth), &ol.Formatter, t.stacktrace, t.attrFormat)
-				} else {
-					buf = getOutBuffer(bs, _level, t._format, k1(calldepth), &t._formatter, t.stacktrace, t.attrFormat)
-				}
-				if t.attrFormat != nil && t.attrFormat.SetBodyFmt != nil {
-					bs = t.attrFormat.SetBodyFmt(_level, buf.Bytes())
-				} else {
-					bs = buf.Bytes()
-				}
-				//t._rwLock.RLock()
-				//t._filehandler.write(bs)
-				//if t.attrFormat != nil && t.attrFormat.SetBodyFmt != nil {
-				//	t._filehandler.write(t.attrFormat.SetBodyFmt(_level, buf.Bytes()))
-				//} else {
-				//	t._filehandler.write(buf.Bytes())
-				//}
-				//t._rwLock.RUnlock()
-			} else {
-				if format == nil {
-					bs = fmt.Appendln([]byte{}, v...)
-				} else {
-					bs = fmt.Appendf([]byte{}, *format+"\n", v...)
-				}
-				//t._rwLock.RLock()
-				//t._filehandler.write(append(bs, '\n'))
-				//t._rwLock.RUnlock()
-			}
-
 			t._rwLock.RLock()
 			t._filehandler.write(bs)
 			t._rwLock.RUnlock()
@@ -935,11 +923,7 @@ func (t *Logging) println(format *string, _level LEVELTYPE, calldepth int, v ...
 	}
 	if t._isConsole {
 		if bs != nil {
-			//if t.attrFormat != nil && t.attrFormat.SetBodyFmt != nil {
-			//	consolewriter(t.attrFormat.SetBodyFmt(_level, buf.Bytes()), false)
-			//} else {
 			consolewriter(bs, false)
-			//}
 		} else {
 			if ol := t.leveloption[_level-1]; ol != nil {
 				fprintln(format, ol.Format, _level, t.stacktrace, k1(calldepth), &ol.Formatter, t.attrFormat, v...)
@@ -969,6 +953,7 @@ type fileHandler struct {
 	file       *os.File
 	_maxSize   int64
 	_fileSize  int64
+	_fileSize2 int64
 	_lastPrint int64
 	_unit      _UNIT
 	_cutmode   _CUTMODE
@@ -996,6 +981,7 @@ func (t *fileHandler) openFileHandler() (e error) {
 	}
 	if fs, err := t.file.Stat(); err == nil {
 		t._fileSize = fs.Size()
+		atomic.StoreInt64(&t._fileSize2, t._fileSize)
 		t._lastPrint = fs.ModTime().Unix()
 	} else {
 		e = err
@@ -1022,7 +1008,7 @@ func (t *fileHandler) write(bs []byte) (n int, e error) {
 	return
 }
 
-func (t *fileHandler) mustBackUp() bool {
+func (t *fileHandler) mustBackUp(addsize int) bool {
 	if t._fileSize == 0 {
 		return false
 	}
@@ -1030,6 +1016,11 @@ func (t *fileHandler) mustBackUp() bool {
 	case _TIMEMODE:
 		return t._lastPrint > 0 && !isCurrentTime(t._mode, t._lastPrint)
 	case _SIZEMODE:
+		if addsize > 0 {
+			if atomic.AddInt64(&t._fileSize2, int64(addsize)) >= t._maxSize*int64(t._unit) {
+				return true
+			}
+		}
 		return t._fileSize > 0 && atomic.LoadInt64(&t._fileSize) >= t._maxSize*int64(t._unit)
 	}
 	return false
