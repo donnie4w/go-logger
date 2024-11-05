@@ -23,15 +23,20 @@ func BenchmarkSerialLogger(b *testing.B) {
 
 func BenchmarkParallelLogger(b *testing.B) {
 	log := logger.NewLogger()
-	log.SetRollingFile("", "logger2.log", 500, logger.MB)
+	log.SetRollingFile("", "logger2.log", 50, logger.MB)
 	log.SetConsole(false)
+	b.SetParallelism(20)
 	b.ResetTimer()
 	var i int64 = 0
 	b.RunParallel(func(pb *testing.PB) {
+		if i == 30000 {
+			return
+		}
 		i++
 		for pb.Next() {
 			log.Debug(">>>>>>this is debug message>>>>>>this is debug message")
 		}
+
 	})
 }
 
