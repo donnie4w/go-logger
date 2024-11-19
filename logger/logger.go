@@ -150,8 +150,9 @@ const (
 var _DEBUG, _INFO, _WARN, _ERROR, _FATALE = []byte("[DEBUG]"), []byte("[INFO]"), []byte("[WARN]"), []byte("[ERROR]"), []byte("[FATAL]")
 
 const (
-	_TIMEMODE _CUTMODE = 1
-	_SIZEMODE _CUTMODE = 2
+	_TIMEMODE        _CUTMODE = 1
+	_SIZEMODE        _CUTMODE = 2
+	_TIMEANDSIZEMODE _CUTMODE = 3
 )
 
 // SetFormat sets the logging format to the specified format type.
@@ -242,6 +243,9 @@ func SetRollingFileLoop(fileDir, fileName string, maxFileSize int64, unit _UNIT,
 // Use SetOption() instead.
 func SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (l *Logging, err error) {
 	return static_lo.SetRollingByTime(fileDir, fileName, mode)
+}
+func SetRolling(fileDir, fileName string, maxFileSize int64, unit _UNIT, mode _MODE_TIME) (l *Logging, err error) {
+	return static_lo.SetRolling(fileDir, fileName, maxFileSize, unit, mode)
 }
 
 // SetGzipOn when set true, the specified backup file of both SetRollingFile and SetRollingFileLoop will be save as a compressed file
@@ -746,6 +750,31 @@ func (t *Logging) SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (l
 	return t, err
 }
 
+func (t *Logging) SetRolling(fileDir, fileName string, maxFileSize int64, unit _UNIT, mode _MODE_TIME) (l *Logging, err error) {
+	t._rwLock.Lock()
+	defer t._rwLock.Unlock()
+	if fileDir == "" {
+		fileDir, _ = os.Getwd()
+	}
+	t._fileDir, t._fileName, t._maxSize, t._maxBackup, t._unit, t._mode = fileDir, fileName, maxFileSize, 0, unit, mode
+	t._cutmode = _TIMEANDSIZEMODE
+	if t._filehandler != nil {
+		t._filehandler.close()
+	}
+	t.newfileHandler()
+	if err = t._filehandler.openFileHandler(); err == nil {
+		t._isFileWell = true
+		go t.ticker(func() {
+			defer recoverable(nil)
+			if t._filehandler.mustBackUp(0) {
+				t.backUp()
+			}
+		})
+	}
+	t.err = err
+	return t, err
+}
+
 // SetGzipOn
 //
 // Use SetOption() instead.
@@ -791,7 +820,7 @@ func (t *Logging) SetOption(option *Option) *Logging {
 		abspath, _ := filepath.Abs(option.FileOption.FilePath())
 		dirPath := filepath.Dir(abspath)
 		fileName := filepath.Base(option.FileOption.FilePath())
-		if option.FileOption.Cutmode() == _SIZEMODE {
+		if option.FileOption.Cutmode()&_SIZEMODE == _SIZEMODE {
 			if dirPath == "" {
 				dirPath, _ = os.Getwd()
 			}
@@ -1000,7 +1029,7 @@ func (t *fileHandler) write(bs []byte) (n int, e error) {
 			if n > 0 {
 				t.addFileSize(int64(n))
 			}
-			if t._cutmode == _TIMEMODE {
+			if t._cutmode&_TIMEMODE == _TIMEMODE {
 				t._lastPrint = loctime().Unix()
 			}
 		}
@@ -1012,22 +1041,25 @@ func (t *fileHandler) mustBackUp(addsize int) bool {
 	if t._fileSize == 0 {
 		return false
 	}
-	switch t._cutmode {
-	case _TIMEMODE:
-		return t._lastPrint > 0 && !isCurrentTime(t._mode, t._lastPrint)
-	case _SIZEMODE:
+	timerFlag := false
+	sizeFlag := false
+	if t._cutmode&_TIMEMODE == _TIMEMODE {
+		timerFlag = t._lastPrint > 0 && !isCurrentTime(t._mode, t._lastPrint)
+	}
+	if t._cutmode&_SIZEMODE == _SIZEMODE {
 		if addsize > 0 {
 			if atomic.AddInt64(&t._fileSize2, int64(addsize)) >= t._maxSize*int64(t._unit) {
 				return true
 			}
 		}
-		return t._fileSize > 0 && atomic.LoadInt64(&t._fileSize) >= t._maxSize*int64(t._unit)
+		sizeFlag = t._fileSize > 0 && atomic.LoadInt64(&t._fileSize) >= t._maxSize*int64(t._unit)
+
 	}
-	return false
+	return timerFlag || sizeFlag
 }
 
 func (t *fileHandler) rename() (bckupfilename string, err error) {
-	if t._cutmode == _TIMEMODE {
+	if t._cutmode&_TIMEMODE == _TIMEMODE {
 		bckupfilename = getBackupDayliFileName(t._lastPrint, t._fileDir, t._fileName, t._mode, t._gzip)
 	} else {
 		bckupfilename, err = getBackupRollFileName(t._fileDir, t._fileName, t._gzip)
