@@ -150,9 +150,9 @@ const (
 var _DEBUG, _INFO, _WARN, _ERROR, _FATALE = []byte("[DEBUG]"), []byte("[INFO]"), []byte("[WARN]"), []byte("[ERROR]"), []byte("[FATAL]")
 
 const (
-	_TIMEMODE        _CUTMODE = 1
-	_SIZEMODE        _CUTMODE = 2
-	_TIMEANDSIZEMODE _CUTMODE = 3
+	_TIMEMODE  _CUTMODE = 1
+	_SIZEMODE  _CUTMODE = 2
+	_MIXEDMODE _CUTMODE = 3
 )
 
 // SetFormat sets the logging format to the specified format type.
@@ -243,9 +243,6 @@ func SetRollingFileLoop(fileDir, fileName string, maxFileSize int64, unit _UNIT,
 // Use SetOption() instead.
 func SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (l *Logging, err error) {
 	return static_lo.SetRollingByTime(fileDir, fileName, mode)
-}
-func SetRolling(fileDir, fileName string, maxFileSize int64, unit _UNIT, mode _MODE_TIME) (l *Logging, err error) {
-	return static_lo.SetRolling(fileDir, fileName, maxFileSize, unit, mode)
 }
 
 // SetGzipOn when set true, the specified backup file of both SetRollingFile and SetRollingFileLoop will be save as a compressed file
@@ -750,31 +747,6 @@ func (t *Logging) SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (l
 	return t, err
 }
 
-func (t *Logging) SetRolling(fileDir, fileName string, maxFileSize int64, unit _UNIT, mode _MODE_TIME) (l *Logging, err error) {
-	t._rwLock.Lock()
-	defer t._rwLock.Unlock()
-	if fileDir == "" {
-		fileDir, _ = os.Getwd()
-	}
-	t._fileDir, t._fileName, t._maxSize, t._maxBackup, t._unit, t._mode = fileDir, fileName, maxFileSize, 0, unit, mode
-	t._cutmode = _TIMEANDSIZEMODE
-	if t._filehandler != nil {
-		t._filehandler.close()
-	}
-	t.newfileHandler()
-	if err = t._filehandler.openFileHandler(); err == nil {
-		t._isFileWell = true
-		go t.ticker(func() {
-			defer recoverable(nil)
-			if t._filehandler.mustBackUp(0) {
-				t.backUp()
-			}
-		})
-	}
-	t.err = err
-	return t, err
-}
-
 // SetGzipOn
 //
 // Use SetOption() instead.
@@ -820,32 +792,21 @@ func (t *Logging) SetOption(option *Option) *Logging {
 		abspath, _ := filepath.Abs(option.FileOption.FilePath())
 		dirPath := filepath.Dir(abspath)
 		fileName := filepath.Base(option.FileOption.FilePath())
+		if dirPath == "" {
+			dirPath, _ = os.Getwd()
+		}
+		t._fileDir, t._fileName, t._maxBackup, t._gzip = dirPath, fileName, option.FileOption.MaxBuckup(), option.FileOption.Compress()
 		if option.FileOption.Cutmode()&_SIZEMODE == _SIZEMODE {
-			if dirPath == "" {
-				dirPath, _ = os.Getwd()
-			}
-			maxBackup := option.FileOption.MaxBuckup()
-			maxsize := option.FileOption.MaxSize()
-			t._cutmode = _SIZEMODE
-			t._fileDir, t._fileName, t._maxSize, t._maxBackup, t._unit, t._gzip = dirPath, fileName, int64(maxsize), maxBackup, 1, option.FileOption.Compress()
+			t._maxSize, t._unit = int64(option.FileOption.MaxSize()), 1
 			if t._maxSize <= 0 {
 				t._maxSize = 1 << 30
 			}
 			if t._filehandler != nil {
 				t._filehandler.close()
 			}
-			t.newfileHandler()
-			if err := t._filehandler.openFileHandler(); err == nil {
-				t._isFileWell = true
-			} else {
-				t.err = err
-			}
-		} else {
-			if dirPath == "" {
-				dirPath, _ = os.Getwd()
-			}
-			t._cutmode = _TIMEMODE
-			t._fileDir, t._fileName, t._mode, t._cutmode, t._maxBackup, t._gzip = dirPath, fileName, option.FileOption.TimeMode(), _TIMEMODE, option.FileOption.MaxBuckup(), option.FileOption.Compress()
+		}
+		if option.FileOption.Cutmode()&_TIMEMODE == _TIMEMODE {
+			t._mode = option.FileOption.TimeMode()
 			if t._mode == 0 {
 				t._mode = MODE_DAY
 			}
@@ -853,17 +814,23 @@ func (t *Logging) SetOption(option *Option) *Logging {
 				t._filehandler.close()
 			}
 			t.newfileHandler()
-			if err := t._filehandler.openFileHandler(); err == nil {
-				t._isFileWell = true
+		}
+		if option.FileOption.Cutmode() > _MIXEDMODE || option.FileOption.Cutmode() <= 0 {
+			panic("cutmode error")
+		}
+		t.newfileHandler()
+		if err := t._filehandler.openFileHandler(); err == nil {
+			t._isFileWell = true
+			if t._mode != 0 {
 				go t.ticker(func() {
 					defer recoverable(nil)
 					if t._filehandler.mustBackUp(0) {
 						t.backUp()
 					}
 				})
-			} else {
-				t.err = err
 			}
+		} else {
+			t.err = err
 		}
 	}
 	return t
