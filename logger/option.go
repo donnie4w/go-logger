@@ -95,7 +95,11 @@ func (f *FileMixedMode) FilePath() string {
 	return f.Filename
 }
 func (f *FileMixedMode) MaxSize() uint64 {
-	return f.Maxsize * uint64(f.SizeUint)
+	if f.SizeUint != -1 {
+		f.Maxsize = f.Maxsize * uint64(f.SizeUint)
+		f.SizeUint = -1
+	}
+	return f.Maxsize
 }
 func (f *FileMixedMode) MaxBuckup() int {
 	return f.Maxbuckup
