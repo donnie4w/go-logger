@@ -150,8 +150,9 @@ const (
 var _DEBUG, _INFO, _WARN, _ERROR, _FATALE = []byte("[DEBUG]"), []byte("[INFO]"), []byte("[WARN]"), []byte("[ERROR]"), []byte("[FATAL]")
 
 const (
-	_TIMEMODE _CUTMODE = 1
-	_SIZEMODE _CUTMODE = 2
+	_TIMEMODE  _CUTMODE = 1
+	_SIZEMODE  _CUTMODE = 2
+	_MIXEDMODE _CUTMODE = 3
 )
 
 // SetFormat sets the logging format to the specified format type.
@@ -791,32 +792,21 @@ func (t *Logging) SetOption(option *Option) *Logging {
 		abspath, _ := filepath.Abs(option.FileOption.FilePath())
 		dirPath := filepath.Dir(abspath)
 		fileName := filepath.Base(option.FileOption.FilePath())
-		if option.FileOption.Cutmode() == _SIZEMODE {
-			if dirPath == "" {
-				dirPath, _ = os.Getwd()
-			}
-			maxBackup := option.FileOption.MaxBuckup()
-			maxsize := option.FileOption.MaxSize()
-			t._cutmode = _SIZEMODE
-			t._fileDir, t._fileName, t._maxSize, t._maxBackup, t._unit, t._gzip = dirPath, fileName, int64(maxsize), maxBackup, 1, option.FileOption.Compress()
+		if dirPath == "" {
+			dirPath, _ = os.Getwd()
+		}
+		t._fileDir, t._fileName, t._maxBackup, t._gzip = dirPath, fileName, option.FileOption.MaxBuckup(), option.FileOption.Compress()
+		if option.FileOption.Cutmode()&_SIZEMODE == _SIZEMODE {
+			t._maxSize, t._unit = int64(option.FileOption.MaxSize()), 1
 			if t._maxSize <= 0 {
 				t._maxSize = 1 << 30
 			}
 			if t._filehandler != nil {
 				t._filehandler.close()
 			}
-			t.newfileHandler()
-			if err := t._filehandler.openFileHandler(); err == nil {
-				t._isFileWell = true
-			} else {
-				t.err = err
-			}
-		} else {
-			if dirPath == "" {
-				dirPath, _ = os.Getwd()
-			}
-			t._cutmode = _TIMEMODE
-			t._fileDir, t._fileName, t._mode, t._cutmode, t._maxBackup, t._gzip = dirPath, fileName, option.FileOption.TimeMode(), _TIMEMODE, option.FileOption.MaxBuckup(), option.FileOption.Compress()
+		}
+		if option.FileOption.Cutmode()&_TIMEMODE == _TIMEMODE {
+			t._mode = option.FileOption.TimeMode()
 			if t._mode == 0 {
 				t._mode = MODE_DAY
 			}
@@ -824,17 +814,23 @@ func (t *Logging) SetOption(option *Option) *Logging {
 				t._filehandler.close()
 			}
 			t.newfileHandler()
-			if err := t._filehandler.openFileHandler(); err == nil {
-				t._isFileWell = true
+		}
+		if option.FileOption.Cutmode() > _MIXEDMODE || option.FileOption.Cutmode() <= 0 {
+			panic("cutmode error")
+		}
+		t.newfileHandler()
+		if err := t._filehandler.openFileHandler(); err == nil {
+			t._isFileWell = true
+			if t._mode != 0 {
 				go t.ticker(func() {
 					defer recoverable(nil)
 					if t._filehandler.mustBackUp(0) {
 						t.backUp()
 					}
 				})
-			} else {
-				t.err = err
 			}
+		} else {
+			t.err = err
 		}
 	}
 	return t
@@ -1000,7 +996,7 @@ func (t *fileHandler) write(bs []byte) (n int, e error) {
 			if n > 0 {
 				t.addFileSize(int64(n))
 			}
-			if t._cutmode == _TIMEMODE {
+			if t._cutmode&_TIMEMODE == _TIMEMODE {
 				t._lastPrint = loctime().Unix()
 			}
 		}
@@ -1012,22 +1008,25 @@ func (t *fileHandler) mustBackUp(addsize int) bool {
 	if t._fileSize == 0 {
 		return false
 	}
-	switch t._cutmode {
-	case _TIMEMODE:
-		return t._lastPrint > 0 && !isCurrentTime(t._mode, t._lastPrint)
-	case _SIZEMODE:
+	timerFlag := false
+	sizeFlag := false
+	if t._cutmode&_TIMEMODE == _TIMEMODE {
+		timerFlag = t._lastPrint > 0 && !isCurrentTime(t._mode, t._lastPrint)
+	}
+	if t._cutmode&_SIZEMODE == _SIZEMODE {
 		if addsize > 0 {
 			if atomic.AddInt64(&t._fileSize2, int64(addsize)) >= t._maxSize*int64(t._unit) {
 				return true
 			}
 		}
-		return t._fileSize > 0 && atomic.LoadInt64(&t._fileSize) >= t._maxSize*int64(t._unit)
+		sizeFlag = t._fileSize > 0 && atomic.LoadInt64(&t._fileSize) >= t._maxSize*int64(t._unit)
+
 	}
-	return false
+	return timerFlag || sizeFlag
 }
 
 func (t *fileHandler) rename() (bckupfilename string, err error) {
-	if t._cutmode == _TIMEMODE {
+	if t._cutmode&_TIMEMODE == _TIMEMODE {
 		bckupfilename = getBackupDayliFileName(t._lastPrint, t._fileDir, t._fileName, t._mode, t._gzip)
 	} else {
 		bckupfilename, err = getBackupRollFileName(t._fileDir, t._fileName, t._gzip)

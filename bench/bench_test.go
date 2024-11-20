@@ -103,3 +103,22 @@ func Test_Bench2(t *testing.T) {
 		log.Debug(">>>>>>this is debug message>>>>>>this is debug message")
 	}
 }
+
+var (
+	goLogger = logger.NewLogger()
+)
+
+func init() {
+	goLogger.SetOption(&logger.Option{Level: logger.LEVEL_DEBUG, Console: true, FileOption: &logger.FileMixedMode{Filename: "test.log", Maxsize: 20, SizeUint: logger.MB, Maxbuckup: 1, IsCompress: true}})
+	goLogger.SetConsole(false)
+	goLogger.SetGzipOn(true)
+}
+func BenchmarkRolling(b *testing.B) {
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			// do something
+			goLogger.Info("this is info message")
+		}
+	})
+}

@@ -74,6 +74,41 @@ func (f *FileTimeMode) Compress() bool {
 	return f.IsCompress
 }
 
+type FileMixedMode struct {
+	Filename   string
+	Timemode   _MODE_TIME
+	Maxsize    uint64
+	SizeUint   _UNIT
+	Maxbuckup  int
+	IsCompress bool
+}
+
+func (f *FileMixedMode) Cutmode() _CUTMODE {
+	return _MIXEDMODE
+}
+
+func (f *FileMixedMode) TimeMode() _MODE_TIME {
+	return f.Timemode
+}
+
+func (f *FileMixedMode) FilePath() string {
+	return f.Filename
+}
+func (f *FileMixedMode) MaxSize() uint64 {
+	if f.SizeUint != -1 {
+		f.Maxsize = f.Maxsize * uint64(f.SizeUint)
+		f.SizeUint = -1
+	}
+	return f.Maxsize
+}
+func (f *FileMixedMode) MaxBuckup() int {
+	return f.Maxbuckup
+}
+
+func (f *FileMixedMode) Compress() bool {
+	return f.IsCompress
+}
+
 // Option represents a configuration option for the Logging struct.
 // It includes various settings such as log level, console output, format, formatter, file options, and a custom handler.
 type Option struct {
