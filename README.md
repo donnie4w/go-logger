@@ -224,16 +224,32 @@ AttrFormat      ：日志属性格式化
 	IsCompress  备份文件是否压缩
     ```
 
-  - ##### SetOption 示例1
+  - ###### `FileMixedMode` 按文件大小和时间混合模式滚动备份日志文件
+    ```text
+    Filename   日志文件路径
+    Maxsize    日志文件大小的最大值，超过则滚动备份
+    Timemode   按小时，天，月份：MODE_HOUR，MODE_DAY，MODE_MONTH
+    Maxbuckup  最多备份日志文件数
+    IsCompress  备份文件是否压缩
+    ```
+
+  - ##### SetOption 示例1  `FileTimeMode`
     ```go
     // debug级别，关闭控制台日志打印，按天备份日志，最多日志文件数位10，备份时压缩文件，日志文件名为 testlogtime.log
     SetOption(&Option{Level: LEVEL_DEBUG, Console: false, FileOption: &FileTimeMode{Filename: "testlogtime.log", Maxbuckup: 10, IsCompress: true, Timemode: MODE_DAY}})
     ```
-  - ##### SetOption 示例2
+  - ##### SetOption 示例2  `FileSizeMode`
     ```go
     // debug级别，关闭控制台日志打印，按文件大小备份日志，按每文件大小为1G时备份一个文件，  最多日志文件数位10，备份时压缩文件，日志文件名为 testlog.log
     SetOption(&Option{Level: LEVEL_DEBUG, Console: false, FileOption: &FileSizeMode{Filename: "testlog.log", Maxsize: 1<<30, Maxbuckup: 10, IsCompress: true}})
     ```
+
+  - ##### SetOption 示例3  `FileMixedMode`
+    ```go
+    // debug级别，关闭控制台日志打印，按天同时按文件大小备份日志，最多日志文件数位10，备份时压缩文件，日志文件名为 mixedlog.log
+    SetOption(&Option{Level: LEVEL_DEBUG, Console: false, FileOption: &FileSizeMode{Filename: "mixedlog.log", Maxsize: 1<<30, Maxbuckup: 10, IsCompress: true, Timemode: MODE_DAY}})
+    ```
+
 
 2.  ##### **Stacktrace** 堆栈日志
 
