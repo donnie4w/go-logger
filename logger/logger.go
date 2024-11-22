@@ -437,11 +437,15 @@ type Logging struct {
 	_maxBackup    int                       // Maximum number of backup log files to keep.
 	_isConsole    bool                      // Whether to also output logs to the console.
 	_gzip         bool                      // Whether to enable GZIP compression for old log files.
-	_isTicker     int32                     // Whether to enable a ticker to periodically check the log file status.
+	prevTime      int64                     // The timestamp of last print
+	callDepth     int                       // the depth of function call
 	stacktrace    LEVELTYPE                 // Log level, e.g., DEBUG, INFO, WARN, ERROR, etc.
 	customHandler func(lc *LogContext) bool // Custom log handler function allowing users to define additional log processing logic.
+	atStart       atomic.Int32
+	atStop        atomic.Int32
 	leveloption   [5]*LevelOption
 	attrFormat    *AttrFormat
+	tmTimer       *time.Timer
 	err           error
 }
 
@@ -736,12 +740,7 @@ func (t *Logging) SetRollingByTime(fileDir, fileName string, mode _MODE_TIME) (l
 	t.newfileHandler()
 	if err = t._filehandler.openFileHandler(); err == nil {
 		t._isFileWell = true
-		go t.ticker(func() {
-			defer recoverable(nil)
-			if t._filehandler.mustBackUp(0) {
-				t.backUp()
-			}
-		})
+		t.zeroTimer()
 	}
 	t.err = err
 	return t, err
@@ -767,78 +766,72 @@ func (t *Logging) SetGzipOn(is bool) *Logging {
 func (t *Logging) SetOption(option *Option) *Logging {
 	t._rwLock.Lock()
 	defer t._rwLock.Unlock()
-	if option.Format == 0 {
-		option.Format = default_format
-	}
-	//if option.Formatter == "" {
-	//	option.Formatter = default_formatter
-	//}
-	if option.Formatter != "" {
-		t._formatter = option.Formatter
-	}
-
-	if option.AttrFormat != nil {
-		t.attrFormat = option.AttrFormat
-	}
-
-	t._isConsole = option.Console
-	t._format = option.Format
-
-	t.customHandler = option.CustomHandler
-	t.stacktrace = option.Stacktrace
-	t._level = option.Level
+	t.getOptionArgs(option)
 	if option.FileOption != nil {
-		t._cutmode = option.FileOption.Cutmode()
-		abspath, _ := filepath.Abs(option.FileOption.FilePath())
-		dirPath := filepath.Dir(abspath)
-		fileName := filepath.Base(option.FileOption.FilePath())
-		if dirPath == "" {
-			dirPath, _ = os.Getwd()
+		if abspath, err := filepath.Abs(option.FileOption.FilePath()); err == nil {
+			t._fileDir = filepath.Dir(abspath)
+		} else {
+			fprintln(nil, default_format, LEVEL_ERROR, 0, 1, nil, nil, err.Error())
+			t._fileDir, _ = os.Getwd()
 		}
-		t._fileDir, t._fileName, t._maxBackup, t._gzip = dirPath, fileName, option.FileOption.MaxBuckup(), option.FileOption.Compress()
-		if option.FileOption.Cutmode()&_SIZEMODE == _SIZEMODE {
-			t._maxSize, t._unit = int64(option.FileOption.MaxSize()), 1
-			if t._maxSize <= 0 {
-				t._maxSize = 1 << 30
-			}
-			if t._filehandler != nil {
-				t._filehandler.close()
-			}
-		}
-		if option.FileOption.Cutmode()&_TIMEMODE == _TIMEMODE {
-			t._mode = option.FileOption.TimeMode()
-			if t._mode == 0 {
-				t._mode = MODE_DAY
-			}
-			if t._filehandler != nil {
-				t._filehandler.close()
-			}
-			t.newfileHandler()
-		}
-		if option.FileOption.Cutmode() > _MIXEDMODE || option.FileOption.Cutmode() <= 0 {
-			panic("cutmode error")
+		t._fileName = filepath.Base(option.FileOption.FilePath())
+		if t._filehandler != nil {
+			t._filehandler.close()
 		}
 		t.newfileHandler()
 		if err := t._filehandler.openFileHandler(); err == nil {
 			t._isFileWell = true
-			if t._mode != 0 {
-				go t.ticker(func() {
-					defer recoverable(nil)
-					if t._filehandler.mustBackUp(0) {
-						t.backUp()
-					}
-				})
-			}
 		} else {
+			fprintln(nil, default_format, LEVEL_ERROR, 0, 1, nil, nil, err.Error())
 			t.err = err
+		}
+
+		if t._cutmode&_TIMEMODE == _TIMEMODE {
+			t.zeroTimer()
 		}
 	}
 	return t
 }
 
+func (t *Logging) getOptionArgs(option *Option) {
+	if option.Formatter != "" {
+		t._formatter = option.Formatter
+	}
+	if option.AttrFormat != nil {
+		t.attrFormat = option.AttrFormat
+	}
+	if option.Format != 0 {
+		t._format = option.Format
+	}
+	t._isConsole = option.Console
+	t.callDepth = option.CallDepth
+	t.customHandler = option.CustomHandler
+	t.stacktrace = option.Stacktrace
+	t._level = option.Level
+	if option.FileOption != nil {
+		t._cutmode = option.FileOption.Cutmode()
+		if t._cutmode != _TIMEMODE && t._cutmode != _SIZEMODE && t._cutmode != _MIXEDMODE {
+			t._cutmode = _MIXEDMODE
+		}
+		t._maxBackup, t._gzip = option.FileOption.MaxBuckup(), option.FileOption.Compress()
+		if t._cutmode&_SIZEMODE == _SIZEMODE {
+			t._maxSize, t._unit = option.FileOption.MaxSize(), 1
+			if t._maxSize <= 0 {
+				t._maxSize = 1 << 30
+			}
+		}
+		if t._cutmode&_TIMEMODE == _TIMEMODE {
+			t._mode = option.FileOption.TimeMode()
+			if t._mode != MODE_DAY && t._mode != MODE_HOUR && t._mode != MODE_MONTH {
+				t._mode = MODE_DAY
+			}
+		}
+	}
+}
+
 func (t *Logging) newfileHandler() {
 	t._filehandler = new(fileHandler)
-	t._filehandler._fileDir, t._filehandler._fileName, t._filehandler._maxSize, t._filehandler._cutmode, t._filehandler._unit, t._filehandler._maxbackup, t._filehandler._mode, t._filehandler._gzip = t._fileDir, t._fileName, t._maxSize, t._cutmode, t._unit, t._maxBackup, t._mode, t._gzip
+	t._filehandler.logger, t._filehandler._fileDir, t._filehandler._fileName, t._filehandler._maxSize, t._filehandler._cutmode, t._filehandler._unit, t._filehandler._maxbackup, t._filehandler._mode, t._filehandler._gzip = t, t._fileDir, t._fileName, t._maxSize, t._cutmode, t._unit, t._maxBackup, t._mode, t._gzip
 }
 
 func (t *Logging) backUp() (bakfn string, err, openFileErr error) {
@@ -851,6 +844,7 @@ func (t *Logging) backUp() (bakfn string, err, openFileErr error) {
 		fprintln(nil, t._format, LEVEL_ERROR, t.stacktrace, 1, nil, nil, err.Error())
 		return
 	}
+
 	for i := 0; i < 16; i++ {
 		if bakfn, err = t._filehandler.rename(); err != nil {
 			fprintln(nil, t._format, LEVEL_ERROR, t.stacktrace, 1, nil, nil, err.Error())
@@ -859,6 +853,7 @@ func (t *Logging) backUp() (bakfn string, err, openFileErr error) {
 			break
 		}
 	}
+
 	if openFileErr = t._filehandler.openFileHandler(); openFileErr != nil {
 		fprintln(nil, t._format, LEVEL_ERROR, t.stacktrace, 1, nil, nil, openFileErr.Error())
 		t.err = openFileErr
@@ -883,6 +878,10 @@ func (t *Logging) println(format *string, _level LEVELTYPE, calldepth int, v ...
 		}
 	}()
 	var bs []byte
+	if t.callDepth > 0 {
+		calldepth += t.callDepth
+	}
+
 	if t._isFileWell {
 		if t._format != FORMAT_NANO {
 			if format == nil {
@@ -943,6 +942,7 @@ func (t *Logging) SetLevelOption(level LEVELTYPE, option *LevelOption) *Logging 
 }
 
 type fileHandler struct {
+	logger     *Logging
 	fileHandle File
 	_fileDir   string
 	_fileName  string
@@ -951,6 +951,7 @@ type fileHandler struct {
 	_fileSize  int64
 	_fileSize2 int64
 	_lastPrint int64
+	_prevPrint int64
 	_unit      _UNIT
 	_cutmode   _CUTMODE
 	_maxbackup int
@@ -998,6 +999,12 @@ func (t *fileHandler) write(bs []byte) (n int, e error) {
 			}
 			if t._cutmode&_TIMEMODE == _TIMEMODE {
 				t._lastPrint = loctime().Unix()
+				if t._prevPrint > 0 && t._lastPrint-t._prevPrint > 2 && t.logger.tmTimer == nil {
+					t.logger.zeroTimer()
+				} else if t.logger.tmTimer != nil {
+					t.logger.zeroTimerStop()
+				}
+				t._prevPrint = t._lastPrint
 			}
 		}
 	}
@@ -1008,10 +1015,10 @@ func (t *fileHandler) mustBackUp(addsize int) bool {
 	if t._fileSize == 0 {
 		return false
 	}
-	timerFlag := false
-	sizeFlag := false
 	if t._cutmode&_TIMEMODE == _TIMEMODE {
-		timerFlag = t._lastPrint > 0 && !isCurrentTime(t._mode, t._lastPrint)
+		if t._lastPrint > 0 && !isCurrentTime(t._mode, t._lastPrint) {
+			return true
+		}
 	}
 	if t._cutmode&_SIZEMODE == _SIZEMODE {
 		if addsize > 0 {
@@ -1019,10 +1026,9 @@ func (t *fileHandler) mustBackUp(addsize int) bool {
 				return true
 			}
 		}
-		sizeFlag = t._fileSize > 0 && atomic.LoadInt64(&t._fileSize) >= t._maxSize*int64(t._unit)
-
+		return t._fileSize > 0 && atomic.LoadInt64(&t._fileSize) >= t._maxSize*int64(t._unit)
 	}
-	return timerFlag || sizeFlag
+	return false
 }
 
 func (t *fileHandler) rename() (bckupfilename string, err error) {
@@ -1440,24 +1446,38 @@ func itoa(i int, wid int) []byte {
 	return b[bp:]
 }
 
-func (t *Logging) ticker(fn func()) {
-	if !atomic.CompareAndSwapInt32(&t._isTicker, 0, 1) {
-		return
-	}
-	for {
-		waitTime := timeUntilNextWholeHour()
-		if waitTime <= 0 {
-			<-time.After(time.Second)
-			continue
+func (t *Logging) zeroTimerStop() {
+	if t.atStop.CompareAndSwap(0, 1) {
+		defer t.atStop.Store(0)
+		if t.tmTimer != nil {
+			t.tmTimer.Stop()
+			t.tmTimer = nil
 		}
-		<-time.After(waitTime)
-		fn()
 	}
-	atomic.CompareAndSwapInt32(&t._isTicker, 1, 0)
 }
 
-func timeUntilNextWholeHour() time.Duration {
+func (t *Logging) zeroTimer() {
+	if t.atStart.CompareAndSwap(0, 1) {
+		defer t.atStart.Store(0)
+		if t.tmTimer == nil {
+			t.tmTimer = time.AfterFunc(timeUntilNextWholeHour(), t.zeroCheck)
+		}
+	}
+}
+
+func (t *Logging) zeroCheck() {
+	defer recoverable(nil)
+	if t._filehandler.mustBackUp(0) {
+		t.backUp()
+	}
+	t.zeroTimer()
+}
+
+func timeUntilNextWholeHour() (r time.Duration) {
 	now := time.Now()
 	nextWholeHour := time.Date(now.Year(), now.Month(), now.Day(), now.Hour()+1, 0, 1, 0, now.Location())
-	return nextWholeHour.Sub(now)
+	if r = nextWholeHour.Sub(now); r < time.Second {
+		r = time.Second
+	}
+	return
 }
