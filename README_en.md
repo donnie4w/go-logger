@@ -220,6 +220,17 @@ AttrFormat      : Custom attribute formatting
   IsCompress Whether the backup file is compressed
   ```
 
+- ###### `FileMixedMode` rotates log files based on file size and time.
+  ```text
+  Filename   Log file path
+  Timemode   Rotation interval by hour, day, or month: MODE_HOUR, MODE_DAY, MODE_MONTH
+  Maxsize    Maximum log file size; rotation occurs when size is exceeded
+  Maxbackup  Maximum number of log file backups
+  IsCompress Whether the backup file is compressed
+  ```
+
+
+
 - ##### SetOption Example 1
   ```go
   // debug level, disable console log printing, daily log rotation, maximum of 10 log files, compress backups, log file named testlogtime.log
@@ -230,6 +241,12 @@ AttrFormat      : Custom attribute formatting
   ```go
   // debug level, disable console log printing, rotate log files by file size, rotate at 1G per file, maximum of 10 log files, compress backups, log file named testlog.log
   SetOption(&Option{Level: LEVEL_DEBUG, Console: false, FileOption: &FileSizeMode{Filename: "testlog.log", Maxsize: 1<<30, Maxbackup: 10, IsCompress: true}})
+  ```
+
+- ##### SetOption Example 3
+  ```go
+  // debug level, disable console log printing, rotate log files by file size and time,  maximum of 10 log files, compress backups, log file named mixedlog.log
+  SetOption(&Option{Level: LEVEL_DEBUG, Console: false, FileOption: &FileSizeMode{Filename: "mixedlog.log", Maxsize: 1<<30, Maxbackup: 10, IsCompress: true, Timemode: MODE_DAY}})
   ```
 
 2. Stacktrace Log
@@ -383,7 +400,7 @@ logger.TIME_DEVIATION = 1000 // Adjust log time by +1 microsecond
 | Parallel_SlogAndGoLogger| 4          | 424,813     | 5,242            | 345                   | 6           |
 | Parallel_SlogAndGoLogger| 8          | 425,070     | 5,215            | 345                   | 6           |
 
-### Performance Analysis
+### Performance Analysis specification
 
 1. **NativeLog**: Go's built-in logging library
 2. **Zap**: Uber’s high-performance logging library
@@ -391,7 +408,7 @@ logger.TIME_DEVIATION = 1000 // Adjust log time by +1 microsecond
 4. **Slog**: Go’s built-in Slog library
 5. **Slog + GoLogger**: Slog using GoLogger for log file management
 
-### Performance Analysis Table
+### Performance Analysis
 
 | Library           | Test Type        | Concurrency | Avg. Time (ns/op) | Mem Allocation (B/op) | Allocations (allocs/op) |
 |-------------------|------------------|-------------|--------------------|------------------------|--------------------------|
