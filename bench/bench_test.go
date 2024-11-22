@@ -3,11 +3,8 @@ package bench
 import (
 	"github.com/donnie4w/go-logger/logger"
 	"log/slog"
-	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 )
 
@@ -23,7 +20,7 @@ func BenchmarkSerialLogger(b *testing.B) {
 
 func BenchmarkParallelLogger(b *testing.B) {
 	log := logger.NewLogger()
-	log.SetRollingFile("", "logger2.log", 50, logger.MB)
+	log.SetRollingFile("", "logger2.log", 200, logger.MB)
 	log.SetConsole(false)
 	b.SetParallelism(20)
 	b.ResetTimer()
@@ -77,47 +74,12 @@ func BenchmarkParallelSLog(b *testing.B) {
 	})
 }
 
-func Test_Bench(t *testing.T) {
-	go http.ListenAndServe(":9000", nil)
-	log := logger.NewLogger()
-	log.SetRollingFile("", "loggerBench.log", 100, logger.MB)
-	log.SetConsole(false)
-	for i := 0; i < 1<<30; i++ {
-		var wg sync.WaitGroup
-		for j := 0; j < 1000; j++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				log.Debug(i, ">>>this is debug message", "!!!11111111111111111111111111")
-			}()
-		}
-		wg.Wait()
-	}
-}
-
-func Test_Bench2(t *testing.T) {
-	log := logger.NewLogger()
-	log.SetRollingFile("", "logger2.log", 500, logger.MB)
-	log.SetConsole(false)
-	for i := 0; i < 10; i++ {
-		log.Debug(">>>>>>this is debug message>>>>>>this is debug message")
-	}
-}
-
-var (
-	goLogger = logger.NewLogger()
-)
-
-func init() {
-	goLogger.SetOption(&logger.Option{Level: logger.LEVEL_DEBUG, Console: true, FileOption: &logger.FileMixedMode{Filename: "test.log", Maxsize: 20, SizeUint: logger.MB, Maxbuckup: 1, IsCompress: true}})
-	goLogger.SetConsole(false)
-	goLogger.SetGzipOn(true)
-}
-func BenchmarkRolling(b *testing.B) {
+func BenchmarkMixedMode(b *testing.B) {
+	goLogger := logger.NewLogger()
+	goLogger.SetOption(&logger.Option{Level: logger.LEVEL_DEBUG, Console: false, FileOption: &logger.FileMixedMode{Filename: "testmixed.log", Maxsize: 200 << 20, Maxbuckup: 10, IsCompress: false}})
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			// do something
 			goLogger.Info("this is info message")
 		}
 	})
