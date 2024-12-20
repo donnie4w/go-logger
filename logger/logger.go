@@ -155,6 +155,12 @@ const (
 	_MIXEDMODE _CUTMODE = 3
 )
 
+// 使用常量定义标志位组合
+const (
+	timeFlags = FORMAT_DATE | FORMAT_TIME | FORMAT_MICROSECONDS
+	fileFlags = FORMAT_SHORTFILENAME | FORMAT_LONGFILENAME | FORMAT_RELATIVEFILENAME
+)
+
 // SetFormat sets the logging format to the specified format type.
 //
 // 设置打印格式: FORMAT_LEVELFLAG | FORMAT_SHORTFILENAME | FORMAT_DATE | FORMAT_TIME
@@ -1324,9 +1330,7 @@ func output(flag _FORMAT, calldepth int, s []byte, level LEVELTYPE, formatter *s
 
 func formatmsg(msg []byte, t time.Time, callstack *callStack, flag _FORMAT, level LEVELTYPE, formatter *string, attrFormat *AttrFormat) (buf *buffer.Buffer) {
 	buf = buffer.NewBufferByPool()
-	var levelbuf *buffer.Buffer
-	var timebuf *buffer.Buffer
-	var filebuf *buffer.Buffer
+	var levelbuf, timebuf, filebuf *buffer.Buffer
 	is_default_formatter := formatter == nil || *formatter == ""
 	if is_default_formatter {
 		levelbuf, timebuf, filebuf = buf, buf, buf
@@ -1342,7 +1346,7 @@ func formatmsg(msg []byte, t time.Time, callstack *callStack, flag _FORMAT, leve
 			levelbuf.Write(getlevelname(level))
 		}
 	}
-	if flag&(FORMAT_DATE|FORMAT_TIME|FORMAT_MICROSECONDS) != 0 {
+	if flag&timeFlags != 0 {
 		if attrFormat != nil && attrFormat.SetTimeFmt != nil {
 			datestr, timestr, microsecond := attrFormat.SetTimeFmt()
 			if flag&FORMAT_DATE != 0 && datestr != "" {
@@ -1381,7 +1385,7 @@ func formatmsg(msg []byte, t time.Time, callstack *callStack, flag _FORMAT, leve
 			timebuf.WriteByte(' ')
 		}
 	}
-	if flag&(FORMAT_SHORTFILENAME|FORMAT_LONGFILENAME|FORMAT_RELATIVEFILENAME) != 0 {
+	if flag&fileFlags != 0 {
 		if callstack != nil {
 			callstack.Pop(flag, filebuf)
 			callStackPool.Put(&callstack)
