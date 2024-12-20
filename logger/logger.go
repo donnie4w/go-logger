@@ -1327,7 +1327,7 @@ func formatmsg(msg []byte, t time.Time, callstack *callStack, flag _FORMAT, leve
 	var levelbuf *buffer.Buffer
 	var timebuf *buffer.Buffer
 	var filebuf *buffer.Buffer
-	is_default_formatter := formatter == nil || (formatter != nil && *formatter == "")
+	is_default_formatter := formatter == nil || *formatter == ""
 	if is_default_formatter {
 		levelbuf, timebuf, filebuf = buf, buf, buf
 	} else {
