@@ -270,7 +270,7 @@ func SetOption(option *Option) *Logging {
 // Returns:
 //   - *Logging: A Logging instance for possible further usage.
 func Debug(v ...any) *Logging {
-	return println(nil, LEVEL_DEBUG, default_level, 2, v...)
+	return println(nil, LEVEL_DEBUG, 2, v...)
 }
 
 // Info logs a message at the INFO level using the default logging instance.
@@ -282,7 +282,7 @@ func Debug(v ...any) *Logging {
 // Returns:
 //   - *Logging: A Logging instance for possible further usage.
 func Info(v ...any) *Logging {
-	return println(nil, LEVEL_INFO, default_level, 2, v...)
+	return println(nil, LEVEL_INFO, 2, v...)
 }
 
 // Warn logs a message at the WARN level using the default logging instance.
@@ -294,7 +294,7 @@ func Info(v ...any) *Logging {
 // Returns:
 //   - *Logging: A Logging instance for possible further usage.
 func Warn(v ...any) *Logging {
-	return println(nil, LEVEL_WARN, default_level, 2, v...)
+	return println(nil, LEVEL_WARN, 2, v...)
 }
 
 // Error logs a message at the ERROR level using the default logging instance.
@@ -306,7 +306,7 @@ func Warn(v ...any) *Logging {
 // Returns:
 //   - *Logging: A Logging instance for possible further usage.
 func Error(v ...any) *Logging {
-	return println(nil, LEVEL_ERROR, default_level, 2, v...)
+	return println(nil, LEVEL_ERROR, 2, v...)
 }
 
 // Fatal logs a message at the FATAL level using the default logging instance and may terminate the application.
@@ -318,7 +318,7 @@ func Error(v ...any) *Logging {
 // Returns:
 //   - *Logging: A Logging instance for possible further usage.
 func Fatal(v ...any) *Logging {
-	return println(nil, LEVEL_FATAL, default_level, 2, v...)
+	return println(nil, LEVEL_FATAL, 2, v...)
 }
 
 // Debugf logs a formatted message at the DEBUG level using the default logging instance.
@@ -331,7 +331,7 @@ func Fatal(v ...any) *Logging {
 // Returns:
 //   - *Logging: A Logging instance for possible further usage.
 func Debugf(format string, v ...any) *Logging {
-	return println(&format, LEVEL_DEBUG, default_level, 2, v...)
+	return println(&format, LEVEL_DEBUG, 2, v...)
 }
 
 // Infof logs a formatted message at the INFO level using the default logging instance.
@@ -344,7 +344,7 @@ func Debugf(format string, v ...any) *Logging {
 // Returns:
 //   - *Logging: A Logging instance for possible further usage.
 func Infof(format string, v ...any) *Logging {
-	return println(&format, LEVEL_INFO, default_level, 2, v...)
+	return println(&format, LEVEL_INFO, 2, v...)
 }
 
 // Warnf logs a formatted message at the WARN level using the default logging instance.
@@ -357,7 +357,7 @@ func Infof(format string, v ...any) *Logging {
 // Returns:
 //   - *Logging: A Logging instance for possible further usage.
 func Warnf(format string, v ...any) *Logging {
-	return println(&format, LEVEL_WARN, default_level, 2, v...)
+	return println(&format, LEVEL_WARN, 2, v...)
 }
 
 // Errorf logs a formatted message at the ERROR level using the default logging instance.
@@ -370,7 +370,7 @@ func Warnf(format string, v ...any) *Logging {
 // Returns:
 //   - *Logging: A Logging instance for possible further usage.
 func Errorf(format string, v ...any) *Logging {
-	return println(&format, LEVEL_ERROR, default_level, 2, v...)
+	return println(&format, LEVEL_ERROR, 2, v...)
 }
 
 // Fatalf logs a formatted message at the FATAL level using the default logging instance and may terminate the application.
@@ -383,10 +383,10 @@ func Errorf(format string, v ...any) *Logging {
 // Returns:
 //   - *Logging: A Logging instance for possible further usage.
 func Fatalf(format string, v ...any) *Logging {
-	return println(&format, LEVEL_FATAL, default_level, 2, v...)
+	return println(&format, LEVEL_FATAL, 2, v...)
 }
 
-func println(format *string, level, _default_level LEVELTYPE, calldepth int, v ...any) *Logging {
+func println(format *string, level LEVELTYPE, calldepth int, v ...any) *Logging {
 	return static_lo.println(format, level, k1(calldepth), v...)
 }
 
