@@ -1360,12 +1360,24 @@ func formatmsg(msg []byte, t time.Time, callstack *callStack, flag _FORMAT, leve
 			}
 		} else {
 			if flag&FORMAT_DATE != 0 {
-				timebuf.WriteString(t.Format("2006/01/02 "))
+				year, month, day := t.Date()
+				timebuf.Write(itoa(year, 4))
+				timebuf.WriteByte('/')
+				timebuf.Write(itoa(int(month), 2))
+				timebuf.WriteByte('/')
+				timebuf.Write(itoa(day, 2))
+				timebuf.WriteByte(' ')
 			}
-			if flag&FORMAT_TIME != 0 {
-				timebuf.WriteString(t.Format("15:04:05"))
+			if flag&(FORMAT_TIME|FORMAT_MICROSECONDS) != 0 {
+				hour, min, sec := t.Clock()
+				timebuf.Write(itoa(hour, 2))
+				timebuf.WriteByte(':')
+				timebuf.Write(itoa(min, 2))
+				timebuf.WriteByte(':')
+				timebuf.Write(itoa(sec, 2))
 				if flag&FORMAT_MICROSECONDS != 0 {
-					timebuf.WriteString(fmt.Sprintf(".%06d", t.Nanosecond()/1000))
+					timebuf.WriteByte('.')
+					timebuf.Write(itoa(t.Nanosecond()/1e3, 6))
 				}
 			}
 		}
