@@ -29,7 +29,7 @@ func Test_AttrFormat(t *testing.T) {
 			return s, "", ""
 		},
 	}
-	logger.SetOption(&logger.Option{AttrFormat: attrformat, Console: true, FileOption: &logger.FileTimeMode{Filename: "testlogtime.log", Maxbuckup: 3, IsCompress: false, Timemode: logger.MODE_MONTH}})
+	logger.SetOption(&logger.Option{AttrFormat: attrformat, Console: true, FileOption: &logger.FileTimeMode{Filename: "testlogtime.log", Maxbackup: 3, IsCompress: false, Timemode: logger.MODE_MONTH}})
 	logger.Debug("this is a debug message", 1111111111111111111)
 	logger.Info("this is a info message", 2222222222222222222)
 	logger.Warn("this is a warn message", 33333333333333333)
@@ -62,7 +62,7 @@ func Test_AttrFormat2(t *testing.T) {
 			}
 		},
 	}
-	logger.SetOption(&logger.Option{AttrFormat: attrformat, Console: true, FileOption: &logger.FileTimeMode{Filename: "testlogtime.log", Maxbuckup: 3, IsCompress: false, Timemode: logger.MODE_MONTH}})
+	logger.SetOption(&logger.Option{AttrFormat: attrformat, Console: true, FileOption: &logger.FileTimeMode{Filename: "testlogtime.log", Maxbackup: 3, IsCompress: false, Timemode: logger.MODE_MONTH}})
 	logger.Debug("this is a debug message:", 111111111111111110)
 	logger.Info("this is a info message:", 222222222222222220)
 	logger.Warn("this is a warn message:", 333333333333333330)

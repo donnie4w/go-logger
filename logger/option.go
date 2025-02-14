@@ -17,7 +17,7 @@ type FileOption interface {
 	TimeMode() _MODE_TIME // Returns the time-based rotation mode / 返回时间切割模式
 	FilePath() string     // Returns the log file path / 返回日志文件路径
 	MaxSize() int64       // Returns the maximum file size (in bytes) / 返回最大文件大小（字节）
-	MaxBuckup() int       // Returns the maximum number of backup files / 返回最大备份文件数量
+	MaxBackup() int       // Returns the maximum number of backup files / 返回最大备份文件数量
 	Compress() bool       // Returns whether compression is enabled / 返回是否启用压缩
 }
 
@@ -26,7 +26,7 @@ type FileOption interface {
 type FileSizeMode struct {
 	Filename   string // The path to the log file / 日志文件路径
 	Maxsize    int64  // The maximum file size; when exceeded, a rotation will occur / 文件最大大小，超过该大小时进行切割
-	Maxbuckup  int    // The maximum number of backup files to keep / 保留的最大备份文件数量
+	Maxbackup  int    // The maximum number of backup files to keep / 保留的最大备份文件数量
 	IsCompress bool   // Whether to enable compression for backup files / 是否启用备份文件的压缩
 }
 
@@ -46,8 +46,8 @@ func (f *FileSizeMode) MaxSize() int64 {
 	return f.Maxsize // Returns the maximum file size limit / 返回最大文件大小限制
 }
 
-func (f *FileSizeMode) MaxBuckup() int {
-	return f.Maxbuckup // Returns the maximum number of backup files / 返回最大备份文件数量
+func (f *FileSizeMode) MaxBackup() int {
+	return f.Maxbackup // Returns the maximum number of backup files / 返回最大备份文件数量
 }
 
 func (f *FileSizeMode) Compress() bool {
@@ -59,7 +59,7 @@ func (f *FileSizeMode) Compress() bool {
 type FileTimeMode struct {
 	Filename   string     // The path to the log file / 日志文件路径
 	Timemode   _MODE_TIME // The time-based rotation mode / 时间切割模式
-	Maxbuckup  int        // The maximum number of backup files to keep / 保留的最大备份文件数量
+	Maxbackup  int        // The maximum number of backup files to keep / 保留的最大备份文件数量
 	IsCompress bool       // Whether to enable compression for backup files / 是否启用备份文件的压缩
 }
 
@@ -79,8 +79,8 @@ func (f *FileTimeMode) MaxSize() int64 {
 	return 0 // No size limitation for time-based rotation / 按时间切割不考虑文件大小限制
 }
 
-func (f *FileTimeMode) MaxBuckup() int {
-	return f.Maxbuckup // Returns the maximum number of backup files / 返回最大备份文件数量
+func (f *FileTimeMode) MaxBackup() int {
+	return f.Maxbackup // Returns the maximum number of backup files / 返回最大备份文件数量
 }
 
 func (f *FileTimeMode) Compress() bool {
@@ -93,7 +93,7 @@ type FileMixedMode struct {
 	Filename   string     // The path to the log file / 日志文件路径
 	Timemode   _MODE_TIME // The time-based rotation mode / 时间切割模式
 	Maxsize    int64      // The maximum file size; when exceeded, a rotation will occur / 文件最大大小，超过该大小时进行切割
-	Maxbuckup  int        // The maximum number of backup files to keep / 保留的最大备份文件数量
+	Maxbackup  int        // The maximum number of backup files to keep / 保留的最大备份文件数量
 	IsCompress bool       // Whether to enable compression for backup files / 是否启用备份文件的压缩
 }
 
@@ -113,8 +113,8 @@ func (f *FileMixedMode) MaxSize() int64 {
 	return f.Maxsize // Returns the maximum file size for rotation / 返回文件最大大小
 }
 
-func (f *FileMixedMode) MaxBuckup() int {
-	return f.Maxbuckup // Returns the maximum number of backup files / 返回最大备份文件数量
+func (f *FileMixedMode) MaxBackup() int {
+	return f.Maxbackup // Returns the maximum number of backup files / 返回最大备份文件数量
 }
 
 func (f *FileMixedMode) Compress() bool {
