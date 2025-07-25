@@ -824,7 +824,7 @@ func (t *Logging) getOptionArgs(option *Option) {
 		if t._cutmode != _TIMEMODE && t._cutmode != _SIZEMODE && t._cutmode != _MIXEDMODE {
 			t._cutmode = _MIXEDMODE
 		}
-		t._maxBackup, t._gzip = option.FileOption.MaxBuckup(), option.FileOption.Compress()
+		t._maxBackup, t._gzip = option.FileOption.MaxBackup(), option.FileOption.Compress()
 		if t._cutmode&_SIZEMODE == _SIZEMODE {
 			t._maxSize, t._unit = option.FileOption.MaxSize(), 1
 			if t._maxSize <= 0 {
