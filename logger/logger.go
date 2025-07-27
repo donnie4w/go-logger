@@ -10,6 +10,7 @@ package logger
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -114,6 +115,10 @@ const (
 	// the func of caller
 	// 调用的函数名
 	FORMAT_FUNC = _FORMAT(128)
+
+	// FORMAT_JSON 新增: JSON 格式化标志
+	// 当使用此格式时，输出将是一个JSON对象
+	FORMAT_JSON _FORMAT = 512
 )
 
 const (
@@ -262,7 +267,7 @@ func SetGzipOn(is bool) (l *Logging) {
 //
 // e.g.
 //
-// SetOption(&Option{Level: LEVEL_DEBUG, Console: true, FileOption: &FileSizeMode{Filename: "test.log", Maxsize: 500, Maxbackup: 3, IsCompress: false}})
+// SetOption(&Option{Level: LEVEL_DEBUG, Console: true, FileOption: &FileSizeMode{Filename: "test.log", Maxsize: 500, Maxbuckup: 3, IsCompress: false}})
 func SetOption(option *Option) *Logging {
 	return static_lo.SetOption(option)
 }
@@ -276,7 +281,7 @@ func SetOption(option *Option) *Logging {
 // Returns:
 //   - *Logging: A Logging instance for possible further usage.
 func Debug(v ...any) *Logging {
-	return println(nil, LEVEL_DEBUG, 2, v...)
+	return println(nil, LEVEL_DEBUG, default_level, 2, v...)
 }
 
 // Info logs a message at the INFO level using the default logging instance.
@@ -288,7 +293,7 @@ func Debug(v ...any) *Logging {
 // Returns:
 //   - *Logging: A Logging instance for possible further usage.
 func Info(v ...any) *Logging {
-	return println(nil, LEVEL_INFO, 2, v...)
+	return println(nil, LEVEL_INFO, default_level, 2, v...)
 }
 
 // Warn logs a message at the WARN level using the default logging instance.
@@ -300,7 +305,7 @@ func Info(v ...any) *Logging {
 // Returns:
 //   - *Logging: A Logging instance for possible further usage.
 func Warn(v ...any) *Logging {
-	return println(nil, LEVEL_WARN, 2, v...)
+	return println(nil, LEVEL_WARN, default_level, 2, v...)
 }
 
 // Error logs a message at the ERROR level using the default logging instance.
@@ -312,7 +317,7 @@ func Warn(v ...any) *Logging {
 // Returns:
 //   - *Logging: A Logging instance for possible further usage.
 func Error(v ...any) *Logging {
-	return println(nil, LEVEL_ERROR, 2, v...)
+	return println(nil, LEVEL_ERROR, default_level, 2, v...)
 }
 
 // Fatal logs a message at the FATAL level using the default logging instance and may terminate the application.
@@ -324,7 +329,7 @@ func Error(v ...any) *Logging {
 // Returns:
 //   - *Logging: A Logging instance for possible further usage.
 func Fatal(v ...any) *Logging {
-	return println(nil, LEVEL_FATAL, 2, v...)
+	return println(nil, LEVEL_FATAL, default_level, 2, v...)
 }
 
 // Debugf logs a formatted message at the DEBUG level using the default logging instance.
@@ -337,7 +342,7 @@ func Fatal(v ...any) *Logging {
 // Returns:
 //   - *Logging: A Logging instance for possible further usage.
 func Debugf(format string, v ...any) *Logging {
-	return println(&format, LEVEL_DEBUG, 2, v...)
+	return println(&format, LEVEL_DEBUG, default_level, 2, v...)
 }
 
 // Infof logs a formatted message at the INFO level using the default logging instance.
@@ -350,7 +355,7 @@ func Debugf(format string, v ...any) *Logging {
 // Returns:
 //   - *Logging: A Logging instance for possible further usage.
 func Infof(format string, v ...any) *Logging {
-	return println(&format, LEVEL_INFO, 2, v...)
+	return println(&format, LEVEL_INFO, default_level, 2, v...)
 }
 
 // Warnf logs a formatted message at the WARN level using the default logging instance.
@@ -363,7 +368,7 @@ func Infof(format string, v ...any) *Logging {
 // Returns:
 //   - *Logging: A Logging instance for possible further usage.
 func Warnf(format string, v ...any) *Logging {
-	return println(&format, LEVEL_WARN, 2, v...)
+	return println(&format, LEVEL_WARN, default_level, 2, v...)
 }
 
 // Errorf logs a formatted message at the ERROR level using the default logging instance.
@@ -376,7 +381,7 @@ func Warnf(format string, v ...any) *Logging {
 // Returns:
 //   - *Logging: A Logging instance for possible further usage.
 func Errorf(format string, v ...any) *Logging {
-	return println(&format, LEVEL_ERROR, 2, v...)
+	return println(&format, LEVEL_ERROR, default_level, 2, v...)
 }
 
 // Fatalf logs a formatted message at the FATAL level using the default logging instance and may terminate the application.
@@ -389,10 +394,10 @@ func Errorf(format string, v ...any) *Logging {
 // Returns:
 //   - *Logging: A Logging instance for possible further usage.
 func Fatalf(format string, v ...any) *Logging {
-	return println(&format, LEVEL_FATAL, 2, v...)
+	return println(&format, LEVEL_FATAL, default_level, 2, v...)
 }
 
-func println(format *string, level LEVELTYPE, calldepth int, v ...any) *Logging {
+func println(format *string, level, _default_level LEVELTYPE, calldepth int, v ...any) *Logging {
 	return static_lo.println(format, level, k1(calldepth), v...)
 }
 
@@ -768,7 +773,7 @@ func (t *Logging) SetGzipOn(is bool) *Logging {
 //
 // e.g.
 //
-// SetOption(&Option{Level: LEVEL_DEBUG, Console: true, FileOption: &FileSizeMode{Filename: "test.log", Maxsize: 500, Maxbackup: 3, IsCompress: false}})
+// SetOption(&Option{Level: LEVEL_DEBUG, Console: true, FileOption: &FileSizeMode{Filename: "test.log", Maxsize: 500, Maxbuckup: 3, IsCompress: false}})
 func (t *Logging) SetOption(option *Option) *Logging {
 	t._rwLock.Lock()
 	defer t._rwLock.Unlock()
@@ -868,72 +873,8 @@ func (t *Logging) backUp() (bakfn string, err, openFileErr error) {
 }
 
 func (t *Logging) println(format *string, _level LEVELTYPE, calldepth int, v ...any) *Logging {
-	if t._level > _level {
-		return t
-	}
-	if t.err != nil {
-		return t
-	}
-	if t.customHandler != nil && !t.customHandler(&LogContext{Level: _level, Args: v}) {
-		return t
-	}
-	var buf *buffer.Buffer
-	defer func() {
-		if buf != nil {
-			buf.Free()
-		}
-	}()
-	var bs []byte
-	if t.callDepth > 0 {
-		calldepth += t.callDepth
-	}
-
-	if t._isFileWell {
-		if t._format != FORMAT_NANO {
-			if format == nil {
-				bs = fmt.Append([]byte{}, v...)
-			} else {
-				bs = fmt.Appendf([]byte{}, *format, v...)
-			}
-			if ol := t.leveloption[_level-1]; ol != nil {
-				buf = getOutBuffer(bs, _level, ol.Format, k1(calldepth), &ol.Formatter, t.stacktrace, t.attrFormat)
-			} else {
-				buf = getOutBuffer(bs, _level, t._format, k1(calldepth), &t._formatter, t.stacktrace, t.attrFormat)
-			}
-			if t.attrFormat != nil && t.attrFormat.SetBodyFmt != nil {
-				bs = t.attrFormat.SetBodyFmt(_level, buf.Bytes())
-			} else {
-				bs = buf.Bytes()
-			}
-		} else {
-			if format == nil {
-				bs = fmt.Appendln([]byte{}, v...)
-			} else {
-				bs = fmt.Appendf([]byte{}, *format+"\n", v...)
-			}
-		}
-		var openFileErr error
-		if t._filehandler.mustBackUp(len(bs)) {
-			_, openFileErr, _ = t.backUp()
-		}
-		if openFileErr == nil {
-			t._rwLock.RLock()
-			t._filehandler.write(bs)
-			t._rwLock.RUnlock()
-		}
-	}
-	if t._isConsole {
-		if bs != nil {
-			consolewriter(bs, false)
-		} else {
-			if ol := t.leveloption[_level-1]; ol != nil {
-				fprintln(format, ol.Format, _level, t.stacktrace, k1(calldepth), &ol.Formatter, t.attrFormat, v...)
-			} else {
-				fprintln(format, t._format, _level, t.stacktrace, k1(calldepth), &t._formatter, t.attrFormat, v...)
-			}
-		}
-	}
-	return t
+	// 调用新的核心函数，fields 参数传 nil
+	return t.println_entry(format, _level, k1(calldepth), nil, v...)
 }
 
 func SetLevelOption(level LEVELTYPE, option *LevelOption) *Logging {
@@ -1059,7 +1000,7 @@ func (t *fileHandler) rename() (bckupfilename string, err error) {
 					}
 				}
 				if t._maxbackup > 0 {
-					maxbackup(t._fileDir, t._fileName, t._maxbackup)
+					maxbuckup(t._fileDir, t._fileName, t._maxbackup)
 				}
 			}()
 		}
@@ -1201,7 +1142,7 @@ func _getBackupfilename(count int, dir, filename, suffix string, isGzip bool) (b
 
 func consolewrite(s []byte, level, stacktrace LEVELTYPE, flag _FORMAT, calldepth int, formatter *string, attrFormat *AttrFormat) {
 	if flag != FORMAT_NANO {
-		buf := getOutBuffer(s, level, flag, k1(calldepth), formatter, stacktrace, attrFormat)
+		buf := getOutBuffer(s, level, flag, k1(calldepth), formatter, stacktrace, attrFormat, nil)
 		defer buf.Free()
 		if attrFormat != nil && attrFormat.SetBodyFmt != nil {
 			consolewriter(attrFormat.SetBodyFmt(level, buf.Bytes()), false)
@@ -1229,8 +1170,8 @@ func k1(calldepth int) int {
 	return calldepth + 1
 }
 
-func getOutBuffer(s []byte, level LEVELTYPE, format _FORMAT, calldepth int, formatter *string, stacktrace LEVELTYPE, attrFormat *AttrFormat) *buffer.Buffer {
-	return output(format, k1(calldepth), s, level, formatter, stacktrace, attrFormat)
+func getOutBuffer(s []byte, level LEVELTYPE, format _FORMAT, calldepth int, formatter *string, stacktrace LEVELTYPE, attrFormat *AttrFormat, fields Fields) *buffer.Buffer {
+	return output(format, k1(calldepth), s, level, formatter, stacktrace, attrFormat, fields)
 }
 
 func mkdirAll(dir string) (e error) {
@@ -1246,7 +1187,7 @@ func mkdirAll(dir string) (e error) {
 	return
 }
 
-func maxbackup(dir, filename string, maxcount int) {
+func maxbuckup(dir, filename string, maxcount int) {
 	ext := filepath.Ext(filename)
 	name := filename[:len(filename)-len(ext)]
 	if entries, err := os.ReadDir(dir); err == nil {
@@ -1324,15 +1265,20 @@ func lgzip(gzfile, gzname, srcfile string) (err error) {
 
 var m = hashmap.NewLimitHashMap[uintptr, runtime.Frame](1 << 13)
 
-func output(flag _FORMAT, calldepth int, s []byte, level LEVELTYPE, formatter *string, stacktrace LEVELTYPE, attrFormat *AttrFormat) (buf *buffer.Buffer) {
+func output(flag _FORMAT, calldepth int, s []byte, level LEVELTYPE, formatter *string, stacktrace LEVELTYPE, attrFormat *AttrFormat, fields Fields) (buf *buffer.Buffer) {
 	var callstack *callStack
-	if flag&(FORMAT_SHORTFILENAME|FORMAT_LONGFILENAME|FORMAT_RELATIVEFILENAME) != 0 {
+	if flag&(FORMAT_SHORTFILENAME|FORMAT_LONGFILENAME|FORMAT_RELATIVEFILENAME|FORMAT_JSON) != 0 { // 把FORMAT_JSON也加入判断
 		callstack = collectCallStack(k1(calldepth), flag&FORMAT_FUNC != 0, callstack, stacktrace > LEVEL_ALL && stacktrace <= level)
 	}
-	return formatmsg(s, loctime(), callstack, flag, level, formatter, attrFormat)
+	return formatmsg(s, loctime(), callstack, flag, level, formatter, attrFormat, fields)
 }
 
-func formatmsg(msg []byte, t time.Time, callstack *callStack, flag _FORMAT, level LEVELTYPE, formatter *string, attrFormat *AttrFormat) (buf *buffer.Buffer) {
+func formatmsg(msg []byte, t time.Time, callstack *callStack, flag _FORMAT, level LEVELTYPE, formatter *string, attrFormat *AttrFormat, fields Fields) (buf *buffer.Buffer) {
+	// 如果是 JSON 格式，则走专门的逻辑
+	if flag&FORMAT_JSON != 0 {
+		return formatJSON(msg, t, callstack, level, fields)
+	}
+
 	buf = buffer.NewBufferByPool()
 	var levelbuf, timebuf, filebuf *buffer.Buffer
 	is_default_formatter := formatter == nil || *formatter == ""
@@ -1364,24 +1310,12 @@ func formatmsg(msg []byte, t time.Time, callstack *callStack, flag _FORMAT, leve
 			}
 		} else {
 			if flag&FORMAT_DATE != 0 {
-				year, month, day := t.Date()
-				timebuf.Write(itoa(year, 4))
-				timebuf.WriteByte('/')
-				timebuf.Write(itoa(int(month), 2))
-				timebuf.WriteByte('/')
-				timebuf.Write(itoa(day, 2))
-				timebuf.WriteByte(' ')
+				timebuf.WriteString(t.Format("2006/01/02 "))
 			}
-			if flag&(FORMAT_TIME|FORMAT_MICROSECONDS) != 0 {
-				hour, min, sec := t.Clock()
-				timebuf.Write(itoa(hour, 2))
-				timebuf.WriteByte(':')
-				timebuf.Write(itoa(min, 2))
-				timebuf.WriteByte(':')
-				timebuf.Write(itoa(sec, 2))
+			if flag&FORMAT_TIME != 0 {
+				timebuf.WriteString(t.Format("15:04:05"))
 				if flag&FORMAT_MICROSECONDS != 0 {
-					timebuf.WriteByte('.')
-					timebuf.Write(itoa(t.Nanosecond()/1e3, 6))
+					timebuf.WriteString(fmt.Sprintf(".%06d", t.Nanosecond()/1000))
 				}
 			}
 		}
@@ -1405,6 +1339,48 @@ func formatmsg(msg []byte, t time.Time, callstack *callStack, flag _FORMAT, leve
 		parseAndFormatLog(formatter, buf, levelbuf, timebuf, filebuf, msg)
 	}
 	return
+}
+
+// 新增: JSON 格式化函数
+func formatJSON(msg []byte, t time.Time, callstack *callStack, level LEVELTYPE, fields Fields) *buffer.Buffer {
+	jsonFields := make(Fields, len(fields)+4) // +4 为 level, time, message, caller 预留空间
+
+	// 1. 合并用户传入的字段
+	for k, v := range fields {
+		jsonFields[k] = v
+	}
+
+	// 2. 添加标准字段
+	// 使用小写字符串作为日志级别，这是JSON日志的最佳实践
+	levelName := strings.ToLower(string(getlevelname(level)))
+	levelName = strings.Trim(levelName, "[]")
+	jsonFields["level"] = levelName
+	jsonFields["time"] = t.Format(time.RFC3339Nano)
+	jsonFields["message"] = string(msg)
+
+	// 3. 添加调用者信息
+	if callstack != nil {
+		// 这里我们简化处理，只取文件名和行号
+		// file:line
+		b := buffer.NewBuffer()
+		callstack.Pop(FORMAT_SHORTFILENAME, b) // 使用短文件名格式
+		if b.Len() > 0 {
+			jsonFields["caller"] = strings.TrimSpace(b.String())
+		}
+		b.Free()
+		callStackPool.Put(&callstack)
+	}
+
+	// 4. 序列化为 JSON
+	buf := buffer.NewBufferByPool()
+	encoder := json.NewEncoder(buf)
+	// 对于高性能场景，可以考虑使用更快的json库，如 json-iterator/go
+	if err := encoder.Encode(jsonFields); err != nil {
+		// 如果JSON序列化失败，回退到打印一个错误信息
+		fmt.Fprintf(buf, "{\"error\":\"json marshal error: %v\"}\n", err)
+	}
+
+	return buf
 }
 
 func parseAndFormatLog(formatStr *string, buf, levelbuf, timebuf, filebuf *buffer.Buffer, msg []byte) {
@@ -1496,4 +1472,171 @@ func timeUntilNextWholeHour() (r time.Duration) {
 		r = time.Second
 	}
 	return
+}
+
+// Fields 新增: Fields 类型用于保存结构化数据
+type Fields map[string]any
+
+// LogEntry 新增: LogEntry 用于构建带有结构化字段的日志事件
+// 它实现了 "fluent API"
+type LogEntry struct {
+	logger *Logging
+	fields Fields
+}
+
+// WithField 添加单个键值对到日志上下文中
+// 返回一个 *LogEntry 用于链式调用
+func (t *Logging) WithField(key string, value any) *LogEntry {
+	return &LogEntry{
+		logger: t,
+		fields: Fields{key: value},
+	}
+}
+
+// WithFields 添加多个键值对到日志上下文中
+// 返回一个 *LogEntry 用于链式调用
+func (t *Logging) WithFields(fields Fields) *LogEntry {
+	return &LogEntry{
+		logger: t,
+		fields: fields,
+	}
+}
+
+// WithField 为已存在的 LogEntry 添加一个字段
+func (e *LogEntry) WithField(key string, value any) *LogEntry {
+	e.fields[key] = value
+	return e
+}
+
+// WithFields 为已存在的 LogEntry 添加多个字段
+func (e *LogEntry) WithFields(fields Fields) *LogEntry {
+	for k, v := range fields {
+		e.fields[k] = v
+	}
+	return e
+}
+
+// 为 LogEntry 实现所有级别的日志方法
+// 它们将调用一个新的内部 println 方法
+
+func (e *LogEntry) Debug(v ...any) {
+	e.logger.println_entry(nil, LEVEL_DEBUG, 2, e.fields, v...)
+}
+
+func (e *LogEntry) Info(v ...any) {
+	e.logger.println_entry(nil, LEVEL_INFO, 2, e.fields, v...)
+}
+
+func (e *LogEntry) Warn(v ...any) {
+	e.logger.println_entry(nil, LEVEL_WARN, 2, e.fields, v...)
+}
+
+func (e *LogEntry) Error(v ...any) {
+	e.logger.println_entry(nil, LEVEL_ERROR, 2, e.fields, v...)
+}
+
+func (e *LogEntry) Fatal(v ...any) {
+	e.logger.println_entry(nil, LEVEL_FATAL, 2, e.fields, v...)
+}
+
+func (e *LogEntry) Debugf(format string, v ...any) {
+	e.logger.println_entry(&format, LEVEL_DEBUG, 2, e.fields, v...)
+}
+
+func (e *LogEntry) Infof(format string, v ...any) {
+	e.logger.println_entry(&format, LEVEL_INFO, 2, e.fields, v...)
+}
+
+func (e *LogEntry) Warnf(format string, v ...any) {
+	e.logger.println_entry(&format, LEVEL_WARN, 2, e.fields, v...)
+}
+
+func (e *LogEntry) Errorf(format string, v ...any) {
+	e.logger.println_entry(&format, LEVEL_ERROR, 2, e.fields, v...)
+}
+
+func (e *LogEntry) Fatalf(format string, v ...any) {
+	e.logger.println_entry(&format, LEVEL_FATAL, 2, e.fields, v...)
+}
+
+// 这是新的核心打印函数，可以接收 fields
+func (t *Logging) println_entry(format *string, _level LEVELTYPE, calldepth int, fields Fields, v ...any) *Logging {
+	if t._level > _level {
+		return t
+	}
+	if t.err != nil {
+		return t
+	}
+	if t.customHandler != nil && !t.customHandler(&LogContext{Level: _level, Args: v}) {
+		return t
+	}
+	var buf *buffer.Buffer
+	defer func() {
+		if buf != nil {
+			buf.Free()
+		}
+	}()
+	var bs []byte
+	if t.callDepth > 0 {
+		calldepth += t.callDepth
+	}
+
+	// 核心区别在这里：把 fields 传递给 getOutBuffer
+	currentFormat := t._format
+	if ol := t.leveloption[_level-1]; ol != nil {
+		currentFormat = ol.Format
+	}
+
+	if t._isFileWell {
+		if currentFormat != FORMAT_NANO {
+			if format == nil {
+				bs = fmt.Append([]byte{}, v...)
+			} else {
+				bs = fmt.Appendf([]byte{}, *format, v...)
+			}
+			if ol := t.leveloption[_level-1]; ol != nil {
+				buf = getOutBuffer(bs, _level, ol.Format, k1(calldepth), &ol.Formatter, t.stacktrace, t.attrFormat, fields)
+			} else {
+				buf = getOutBuffer(bs, _level, t._format, k1(calldepth), &t._formatter, t.stacktrace, t.attrFormat, fields)
+			}
+			bs = buf.Bytes() // getOutBuffer 现在返回完整的行
+		} else {
+			if format == nil {
+				bs = fmt.Appendln([]byte{}, v...)
+			} else {
+				bs = fmt.Appendf([]byte{}, *format+"\n", v...)
+			}
+		}
+		var openFileErr error
+		if t._filehandler.mustBackUp(len(bs)) {
+			_, openFileErr, _ = t.backUp()
+		}
+		if openFileErr == nil {
+			t._rwLock.RLock()
+			t._filehandler.write(bs)
+			t._rwLock.RUnlock()
+		}
+	}
+	if t._isConsole {
+		if bs != nil {
+			consolewriter(bs, false)
+		} else {
+			// ... (控制台写入逻辑需要做类似修改，传递 fields) ...
+			// 为了简化，我们假设控制台和文件使用相同的格式化逻辑
+			if format == nil {
+				bs = fmt.Append([]byte{}, v...)
+			} else {
+				bs = fmt.Appendf([]byte{}, *format, v...)
+			}
+
+			if ol := t.leveloption[_level-1]; ol != nil {
+				buf = getOutBuffer(bs, _level, ol.Format, k1(calldepth), &ol.Formatter, t.stacktrace, t.attrFormat, fields)
+			} else {
+				buf = getOutBuffer(bs, _level, t._format, k1(calldepth), &t._formatter, t.stacktrace, t.attrFormat, fields)
+			}
+			defer buf.Free()
+			consolewriter(buf.Bytes(), false)
+		}
+	}
+	return t
 }

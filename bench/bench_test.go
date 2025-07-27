@@ -8,6 +8,27 @@ import (
 	"testing"
 )
 
+func BenchmarkSerialJSONLogger(b *testing.B) {
+	log := logger.NewLogger()
+	log.SetFormat(logger.FORMAT_JSON)
+
+	// 方法二：通过 SetOption
+	//logger.SetOption(&logger.Option{
+	//	Level:      logger.LEVEL_INFO,
+	//	Console:    true,
+	//	Format:     logger.FORMAT_JSON, // 关键：设置格式为 JSON
+	//	FileOption: &logger.FileTimeMode{
+	//		// ... 文件配置
+	//	},
+	//})
+	log.SetRollingFile("", "logger2_json.log", 500, logger.MB)
+	log.SetConsole(false)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		log.Debug(">>>>>>this is debug message>>>>>>this is debug message")
+	}
+}
+
 func BenchmarkSerialLogger(b *testing.B) {
 	log := logger.NewLogger()
 	log.SetRollingFile("", "logger2.log", 500, logger.MB)
